@@ -38,11 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newId = $db->lastInsertId();
                 auditLog('CREATE_SESSION','session',$newId,"Code: $code");
                 $msg = 'Training session created successfully!';
-                // Redirect to view the new session
                 header("Location: sessions.php?action=view&id=$newId&msg=" . urlencode($msg));
                 exit;
             } else {
-                // Update
                 $stmt = $db->prepare(
                     "UPDATE training_sessions SET course_title=?,training_type=?,date_conducted=?,
                      time_start=?,time_end=?,location=?,facilitator=?,company=? WHERE id=?"
@@ -62,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newStatus = ($current === 'open') ? 'closed' : 'open';
         $db->prepare("UPDATE training_sessions SET status=? WHERE id=?")->execute([$newStatus,$sid]);
 
-        // If closing, generate certificates
         if ($newStatus === 'closed') {
             generateCertificatesForSession($sid, $db, $admin['id']);
         }
@@ -79,12 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ── Delete via GET ───────────────────────────────────────────
 if ($action === 'delete' && $id) {
-    $action = 'list'; // fall through to list
+    $action = 'list';
 }
 
-// ── Fetch current session if needed ─────────────────────────
 $session = null;
 if ($id) {
     $stmt = $db->prepare("SELECT * FROM training_sessions WHERE id=?");
@@ -92,7 +87,6 @@ if ($id) {
     $session = $stmt->fetch();
 }
 
-// ── Fetch attendees for view ─────────────────────────────────
 $attendees = [];
 if ($action === 'view' && $session) {
     $stmt = $db->prepare(
@@ -104,7 +98,6 @@ if ($action === 'view' && $session) {
     $attendees = $stmt->fetchAll();
 }
 
-// ── List all sessions ────────────────────────────────────────
 $sessions = [];
 if ($action === 'list') {
     $sessions = $db->query(
@@ -117,7 +110,6 @@ if ($action === 'list') {
 
 $msg = $msg ?: sanitize($_GET['msg'] ?? '');
 
-// ── Helper: generate certs ───────────────────────────────────
 function generateCertificatesForSession(int $sid, PDO $db, int $adminId): void {
     $attendees = $db->prepare("SELECT * FROM attendees WHERE session_id=? AND cert_number IS NULL");
     $attendees->execute([$sid]);
@@ -139,7 +131,6 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId): void {
 <title>Training Sessions — 88 Aces Maritime</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/admin.css">
-<!-- QR Code library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -186,7 +177,8 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId): void {
                 <a href="sessions.php?action=view&id=<?= $s['id'] ?>" title="View">👁</a>
                 <a href="#" onclick="showQR('<?= APP_URL ?>/seafarer/form.php?token=<?= $s['qr_token'] ?>','<?= sanitize($s['course_title']) ?>');return false;" title="QR Code">📱</a>
                 <a href="sessions.php?action=edit&id=<?= $s['id'] ?>" title="Edit">✏️</a>
-                <a href="../api/download.php?type=attendance&id=<?= $s['id'] ?>" title="Download Attendance PDF" target="_blank">⬇</a>
+                <a href="../api/download.php?type=attendance&id=<?= $s['id'] ?>" title="Download Attendance PDF" target="_blank">⬇PDF</a>
+                <a href="../api/excel.php?type=attendance&id=<?= $s['id'] ?>" title="Download Attendance Excel" target="_blank">📊XLS</a>
                 <a href="#" onclick="confirmDelete(<?= $s['id'] ?>);return false;" title="Delete">🗑</a>
               </td>
             </tr>
@@ -269,8 +261,10 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId): void {
         <a href="sessions.php?action=edit&id=<?= $id ?>" class="btn btn-outline btn-sm">✏ Edit</a>
         <button onclick="showQR('<?= APP_URL ?>/seafarer/form.php?token=<?= $session['qr_token'] ?>','<?= sanitize($session['course_title']) ?>')" class="btn btn-outline btn-sm">📱 QR Code</button>
         <a href="../api/download.php?type=attendance&id=<?= $id ?>" class="btn btn-primary btn-sm" target="_blank">⬇ Attendance PDF</a>
+        <a href="../api/excel.php?type=attendance&id=<?= $id ?>" class="btn btn-success btn-sm" target="_blank">📊 Attendance Excel</a>
         <?php if ($session['status'] === 'closed'): ?>
-          <a href="../api/download.php?type=report&id=<?= $id ?>" class="btn btn-success btn-sm" target="_blank">📊 Report PDF</a>
+          <a href="../api/download.php?type=report&id=<?= $id ?>" class="btn btn-primary btn-sm" target="_blank">📊 Report PDF</a>
+          <a href="../api/excel.php?type=report&id=<?= $id ?>" class="btn btn-success btn-sm" target="_blank">📊 Report Excel</a>
         <?php endif; ?>
         <form method="POST" style="display:inline">
           <input type="hidden" name="action" value="toggle_status">
