@@ -70,16 +70,19 @@ if (isset($_GET['debug'])) {
 
 switch ($type) {
     case 'pdos':
-        $html = buildPDOS($firstName, $miDot, $surname, $rank, $principal, $fullDate, $certSuffix, $imgDir);
-        $fn   = 'PDOS_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $html    = buildPDOS($firstName, $miDot, $surname, $rank, $principal, $fullDate, $certSuffix, $imgDir);
+        $fn      = 'PDOS_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $wmark   = $imgDir . 'pdos_image2.png';
         break;
     case 'secat':
-        $html = buildSECAT($fullName, $fullDate, $facilitator, $certSuffix, $imgDir);
-        $fn   = 'SECAT_' . $surname . '_' . $firstName . '.pdf';
+        $html  = buildSECAT($fullName, $fullDate, $facilitator, $certSuffix, $imgDir);
+        $fn    = 'SECAT_' . $surname . '_' . $firstName . '.pdf';
+        $wmark = '';
         break;
     default:
-        $html = buildAntiPiracy($firstName, $miDot, $surname, $day, $dayOrd, $month, $year, $certSuffix, $imgDir);
-        $fn   = 'APAT_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $html  = buildAntiPiracy($firstName, $miDot, $surname, $day, $dayOrd, $month, $year, $certSuffix, $imgDir);
+        $fn    = 'APAT_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $wmark = '';
 }
 
 $mpdf = new \Mpdf\Mpdf(array(
@@ -92,6 +95,12 @@ $mpdf = new \Mpdf\Mpdf(array(
     'margin_header' => 0,
     'margin_footer' => 0,
 ));
+
+if (!empty($wmark) && file_exists($wmark)) {
+    $mpdf->SetWatermarkImage($wmark, 0.15, array(130, 100), array(105, 165));
+    $mpdf->showWatermarkImage = true;
+}
+
 $mpdf->WriteHTML($html);
 $mpdf->Output($fn, 'D');
 exit;
@@ -182,23 +191,9 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .attend-text{font-size:11pt;font-weight:bold;color:#c0392b;text-transform:uppercase;letter-spacing:1px;text-decoration:underline;text-align:center;margin-bottom:2mm;}
 .div-thick{border-top:3px solid #003087;margin:2mm 0 1mm;}
 .div-thin{border-top:1px solid #003087;margin:0 0 2mm;}
-/* watermark behind fields */
-.body-area{
-    position:relative;
-    background-image:url(' . $pdosBg . ');
-    background-repeat:no-repeat;
-    background-position:center center;
-    background-size:170mm auto;
-    -webkit-print-color-adjust:exact;
-}
-.body-area::before{
-    content:"";
-    position:absolute;
-    top:0;left:0;right:0;bottom:0;
-    background:rgba(255,255,255,0.82);
-    z-index:0;
-}
-.body-content{position:relative;z-index:1;}
+/* fields area */
+.body-area{position:relative;}
+.body-content{position:relative;}
 .info-table{width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:2mm;}
 .info-table td{padding:1.8mm 1mm;vertical-align:bottom;}
 .lbl{font-weight:bold;color:#000;width:52mm;white-space:nowrap;}
@@ -313,15 +308,3 @@ body{font-family:Georgia,serif;background:#fff;}
 
     return $html;
 }
-
-
-
-
-
-
-
-
-
-
-
-
