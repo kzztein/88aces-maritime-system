@@ -1,6 +1,8 @@
 <?php
 // ============================================================
-// api/generate_cert.php — Fill certificate template with data
+// api/generate_cert.php
+// Auto-generates pixel-perfect PDF certificates
+// Anti-Piracy, PDOS, SECAT
 // ============================================================
 require_once '../config.php';
 requireLogin();
@@ -9,8 +11,10 @@ $attendeeId = (int)($_GET['id'] ?? 0);
 $db = getDB();
 
 $stmt = $db->prepare("
-    SELECT a.*, ts.course_title, ts.training_type, ts.date_conducted,
-           ts.facilitator, ts.company, ts.session_code,
+    SELECT a.*, 
+           ts.course_title, ts.training_type, ts.date_conducted,
+           ts.facilitator, ts.company, ts.session_code, 
+           ts.location, ts.principal,
            c.cert_number
     FROM attendees a
     JOIN training_sessions ts ON ts.id = a.session_id
@@ -18,118 +22,369 @@ $stmt = $db->prepare("
     WHERE a.id = ?
 ");
 $stmt->execute([$attendeeId]);
-$data = $stmt->fetch();
+$row = $stmt->fetch();
 
-if (!$data) die('Attendee not found.');
-if (!$data['cert_number']) die('No certificate yet. Please close the session first.');
+if (!$row) die('Attendee not found.');
+if (!$row['cert_number']) die('No certificate yet. Please close the session first.');
 
-// Map training type to template file
-$templateMap = [
-    'anti_piracy'     => '../cert_templates/anti_piracy.docx',
-    'pdos'            => '../cert_templates/pdos.docx',
-    'secat'           => '../cert_templates/secat.docx',
-    'attendance_only' => '../cert_templates/anti_piracy.docx',
-];
+// ── Prepare values ────────────────────────────────────────
+$date        = new DateTime($row['date_conducted']);
+$day         = $date->format('j');
+$dayOrd      = ordSuffix((int)$day);
+$month       = $date->format('F');
+$year        = $date->format('Y');
+$fullDate    = $date->format('F d, Y');
+$certParts   = explode(' ', $row['cert_number']);
+$certSuffix  = end($certParts);
 
-$templateFile = $templateMap[$data['training_type']] ?? '../cert_templates/anti_piracy.docx';
+$firstName   = strtoupper(trim($row['given_name']));
+$mi          = strtoupper(trim($row['middle_initial']));
+$surname     = strtoupper(trim($row['surname']));
+$miDot       = $mi ? $mi . '.' : '';
+$fullName    = trim($firstName . ' ' . $miDot . ' ' . $surname);
+$rank        = strtoupper(trim($row['rank']));
+$vessel      = strtoupper(trim($row['vessel']));
+$facilitator = strtoupper(trim($row['facilitator']));
+$principal   = strtoupper(trim($row['principal'] ?? $vessel));
+$type        = $row['training_type'];
+$imgDir      = '../cert_images/';
 
-if (!file_exists($templateFile)) {
-    die('
-    <!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px">
-    <div style="max-width:400px;margin:0 auto;background:#fff;padding:40px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)">
-    <div style="font-size:48px">⚠️</div>
-    <h2 style="color:#dc2626">Template Not Found</h2>
-    <p style="color:#6b7280">Please upload the <strong>' . strtoupper($data['training_type']) . '</strong> certificate template first.</p>
-    <p style="color:#6b7280;font-size:13px">Go to: Certificates → Manage Templates → Upload</p>
-    <a href="../admin/certificates.php" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1a4a8a;color:#fff;border-radius:8px;text-decoration:none">Go to Certificates</a>
-    </div></body></html>');
+function ordSuffix(int $n): string {
+    $s = ['th','st','nd','rd'];
+    $v = $n % 100;
+    return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+}
+function b64img(string $path): string {
+    if (!file_exists($path)) return '';
+    $mime = mime_content_type($path);
+    return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+}
+function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+
+require_once '../vendor/autoload.php';
+
+switch ($type) {
+    case 'pdos':
+        $html = pdfPDOS($firstName, $miDot, $surname, $rank, $principal, $fullDate, $certSuffix, $imgDir);
+        $fn   = 'PDOS_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $orient = 'P';
+        break;
+    case 'secat':
+        $html = pdfSECAT($fullName, $fullDate, $facilitator, $certSuffix, $imgDir);
+        $fn   = 'SECAT_' . $surname . '_' . $firstName . '.pdf';
+        $orient = 'P';
+        break;
+    default: // anti_piracy + attendance_only
+        $html = pdfAntiPiracy($firstName, $miDot, $surname, $day, $dayOrd, $month, $year, $certSuffix, $imgDir);
+        $fn   = 'APAT_' . $surname . '_' . $firstName . '_' . $certSuffix . '.pdf';
+        $orient = 'P';
 }
 
-// Prepare all merge field values
-$date      = new DateTime($data['date_conducted']);
-$day       = $date->format('j');
-$month     = $date->format('F');
-$year      = $date->format('Y');
-$fullDate  = $date->format('F d, Y');
-
-$certNumber = $data['cert_number'];
-$certParts  = explode(' ', $certNumber);
-$certSuffix = end($certParts); // e.g. "2026-0001"
-
-$mergeFields = [
-    'CERTIFICATE_NUMBER' => $certSuffix,
-    'FIRST_NAME'         => strtoupper($data['given_name']),
-    'MIDDLE_NAME'        => strtoupper($data['middle_initial']),
-    'MIDDLE_INITIAL'     => strtoupper($data['middle_initial']),
-    'SURNAME'            => strtoupper($data['surname']),
-    'RELEASE_DAY'        => $day,
-    'MONTH'              => $month,
-    'YEAR'               => $year,
-    'RANK'               => strtoupper($data['rank']),
-    'PRINCIPAL'          => strtoupper($data['vessel']),
-    'DATE_ATTENDED'      => $fullDate,
-    'NAME'               => strtoupper($data['given_name'] . ' ' . $data['middle_initial'] . '. ' . $data['surname']),
-    'DATE'               => $fullDate,
-    'FACILITATOR'        => strtoupper($data['facilitator']),
-];
-
-$outputFile = fillDocxTemplate($templateFile, $mergeFields);
-
-$filename = strtoupper($data['training_type']) . '_' . $data['surname'] . '_' . $data['given_name'] . '_' . $certSuffix . '.docx';
-$filename = preg_replace('/[^A-Za-z0-9_\-.]/', '_', $filename);
-
-header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Content-Length: ' . filesize($outputFile));
-header('Cache-Control: max-age=0');
-readfile($outputFile);
-unlink($outputFile);
+$mpdf = new \Mpdf\Mpdf([
+    'mode'          => 'utf-8',
+    'format'        => 'A4',
+    'orientation'   => $orient,
+    'margin_left'   => 0, 'margin_right'  => 0,
+    'margin_top'    => 0, 'margin_bottom' => 0,
+    'margin_header' => 0, 'margin_footer' => 0,
+]);
+$mpdf->WriteHTML($html);
+$mpdf->Output($fn, 'D');
 exit;
 
-function fillDocxTemplate(string $templatePath, array $fields): string {
-    $tmpFile = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
-    copy($templatePath, $tmpFile);
+// ============================================================
+// ANTI-PIRACY CERTIFICATE — matches PDF exactly
+// ============================================================
+function pdfAntiPiracy($fn, $mi, $sn, $day, $dayOrd, $month, $year, $cert, $d): string {
+    $logo = b64img($d.'antipiracy_image1.png');
+    $sig1 = b64img($d.'antipiracy_image2.jpg');
+    $sig2 = b64img($d.'antipiracy_image3.jpg');
+    return '<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Times New Roman",serif;background:#fff;color:#111;}
+.page{width:210mm;min-height:297mm;padding:14mm 18mm 10mm;}
+/* Header */
+.logo-row{text-align:center;margin-bottom:2mm;}
+.logo-row img{height:20mm;}
+.address{text-align:center;font-size:8pt;color:#444;margin-bottom:1mm;}
+.hr{border:none;border-top:1px solid #555;margin:2mm 0;}
+/* Cert number */
+.certno{text-align:right;font-size:8.5pt;margin:4mm 0 0;color:#333;}
+/* Main title */
+.main-title{text-align:center;font-size:22pt;font-weight:bold;margin:8mm 0 3mm;color:#111;}
+.sub-title{text-align:center;font-size:11pt;color:#444;margin-bottom:6mm;}
+/* Name */
+.name-block{text-align:center;margin:0 5mm 6mm;}
+.name-text{font-size:24pt;font-weight:bold;color:#111;border-bottom:2px solid #111;
+           display:inline-block;padding:0 10mm 2mm;letter-spacing:1px;}
+/* Body */
+.body-p{text-align:center;font-size:10.5pt;color:#333;line-height:1.8;margin-bottom:2mm;}
+/* Training title */
+.training-title{text-align:center;font-size:30pt;font-weight:bold;color:#111;
+                line-height:1.1;margin:4mm 0 6mm;letter-spacing:1px;}
+/* Conducted */
+.conducted{text-align:center;font-size:10.5pt;color:#333;margin-bottom:2mm;line-height:1.8;}
+.poea{text-align:justify;font-size:9.5pt;color:#444;margin:3mm 2mm;line-height:1.7;}
+.given{text-align:center;font-size:10.5pt;color:#333;margin:4mm 0 8mm;line-height:1.8;}
+/* Signatures */
+.sigs{display:flex;justify-content:space-between;margin:0 5mm;}
+.sig{text-align:center;width:45%;}
+.sig img{height:20mm;margin-bottom:1mm;}
+.sig-line{border-top:1.5px solid #111;padding-top:2mm;}
+.sig-name{font-size:10pt;font-weight:bold;font-style:italic;}
+.sig-role{font-size:9pt;font-style:italic;color:#444;}
+</style></head><body><div class="page">
 
-    $zip = new ZipArchive();
-    if ($zip->open($tmpFile) !== true) die('Cannot open template.');
+<div class="logo-row"><img src="'.e($logo).'"></div>
+<div class="address">12<sup>th</sup> Floor Trium Square Building Sen. Gil Puyat Ave. Corner Leveriza, Pasay City 1300</div>
+<div class="hr"></div>
 
-    $xmlFiles = ['word/document.xml', 'word/header1.xml', 'word/footer1.xml',
-                 'word/header2.xml', 'word/footer2.xml'];
+<div class="certno">CERTIFICATE NUMBER:<br>APAT-'.e($cert).'</div>
 
-    foreach ($xmlFiles as $xmlFile) {
-        $content = $zip->getFromName($xmlFile);
-        if ($content === false) continue;
-        $content = replaceMergeFields($content, $fields);
-        $zip->addFromString($xmlFile, $content);
-    }
+<div class="main-title">Certificate of Completion</div>
+<div class="sub-title">This certificate is issued to</div>
 
-    $zip->close();
-    return $tmpFile;
+<div class="name-block">
+  <span class="name-text">'.e($fn.' '.$mi.' '.$sn).'</span>
+</div>
+
+<div class="body-p">for having successfully completed the training requirements in</div>
+
+<div class="training-title">ANTI-PIRACY<br>AWARENESS TRAINING</div>
+
+<div class="conducted">Conducted on <strong>'.e($day.' '.$month.' '.$year).'</strong> at <strong>88 Aces Maritime Services Inc.</strong></div>
+<div class="body-p">and</div>
+<div class="poea">as per module approved by the Philippine Overseas Employment Administration, pursuant to POEA Governing Board Resolution No.4 and Memorandum Circular No.14, both series of 2009.</div>
+
+<div class="given">Given this <strong>'.e($dayOrd).'</strong> day of <strong>'.e($month.' '.$year).'</strong>, at Manila City, Philippines.</div>
+
+<div class="sigs">
+  <div class="sig">
+    <img src="'.e($sig1).'">
+    <div class="sig-line">
+      <div class="sig-name">JAY B. ALFARO</div>
+      <div class="sig-role">Accredited Trainor</div>
+    </div>
+  </div>
+  <div class="sig">
+    <img src="'.e($sig2).'">
+    <div class="sig-line">
+      <div class="sig-name">CAPT. CRISANDO S. BLAS</div>
+      <div class="sig-role">President</div>
+    </div>
+  </div>
+</div>
+
+</div></body></html>';
 }
 
-function replaceMergeFields(string $xml, array $fields): string {
-    foreach ($fields as $fieldName => $value) {
-        $safeValue = htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+// ============================================================
+// PDOS CERTIFICATE — matches PDF exactly
+// ============================================================
+function pdfPDOS($fn, $mi, $sn, $rank, $principal, $fullDate, $cert, $d): string {
+    $logo    = b64img($d.'pdos_image1.png');
+    $pdosImg = b64img($d.'pdos_image2.png');
+    $sig2    = b64img($d.'pdos_image3.jpg');
 
-        // Replace «FIELDNAME» display values
-        $xml = str_replace('«' . $fieldName . '»', $safeValue, $xml);
+    return '<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Arial,sans-serif;background:#fff;}
+.page{width:210mm;min-height:297mm;padding:10mm 15mm;}
+/* Header */
+.logo-row{text-align:center;margin-bottom:2mm;}
+.logo-row img.logo{height:18mm;}
+/* PDOS watermark area */
+.pdos-wrap{position:relative;text-align:center;margin-bottom:4mm;}
+.pdos-wrap img.pdos-bg{width:65mm;opacity:0.9;}
+.titles{text-align:center;margin:0 0 2mm;}
+.titles h1{font-size:13pt;font-weight:bold;color:#003087;text-transform:uppercase;letter-spacing:.5px;}
+.titles h2{font-size:11pt;font-weight:bold;color:#003087;text-transform:uppercase;letter-spacing:1px;}
+/* Dividers */
+.div-thick{border-top:3px solid #003087;margin:2mm 0;}
+.div-thin{border-top:1px solid #003087;margin:2mm 0 4mm;}
+/* Info table */
+.info{width:100%;border-collapse:collapse;font-size:10pt;margin:2mm 0;}
+.info td{padding:2.5mm 2mm;vertical-align:top;}
+.info .lbl{font-weight:bold;color:#003087;width:48%;white-space:nowrap;}
+.info .val{font-weight:bold;font-size:10.5pt;border-bottom:1px solid #555;}
+/* Certify paragraph */
+.certify{font-size:9.5pt;font-weight:bold;color:#111;line-height:1.8;margin:4mm 0;}
+.certify u{text-decoration:underline;}
+/* Signatures */
+.sigs{display:flex;justify-content:space-around;margin-top:10mm;}
+.sig{text-align:center;width:40%;}
+.sig img{height:14mm;margin-bottom:1mm;}
+.sig-line{border-top:1.5px solid #111;padding-top:2mm;}
+.sig-name{font-size:10pt;font-weight:bold;text-decoration:underline;}
+.sig-role{font-size:9pt;color:#444;}
+</style></head><body><div class="page">
 
-        // Replace <<FIELDNAME>> style
-        $xml = str_replace('&lt;&lt;' . $fieldName . '&gt;&gt;', $safeValue, $xml);
-        $xml = str_replace('<<' . $fieldName . '>>', $safeValue, $xml);
+<div class="logo-row"><img class="logo" src="'.e($logo).'"></div>
 
-        // Replace full MERGEFIELD XML blocks
-        $pattern = '/<w:fldChar\s[^>]*w:fldCharType="begin"[^>]*>.*?<w:instrText[^>]*>\s*MERGEFIELD\s+"?' 
-                 . preg_quote($fieldName, '/') 
-                 . '"?\s*\\\\MERGEFORMAT\s*<\/w:instrText>.*?<w:fldChar\s[^>]*w:fldCharType="end"[^>]*>/s';
-        $replacement = '<w:r><w:t>' . $safeValue . '</w:t></w:r>';
-        $xml = preg_replace($pattern, $replacement, $xml);
+<div class="pdos-wrap"><img class="pdos-bg" src="'.e($pdosImg).'"></div>
 
-        // Simpler pattern without MERGEFORMAT
-        $pattern2 = '/<w:fldChar\s[^>]*w:fldCharType="begin"[^>]*>.*?<w:instrText[^>]*>\s*MERGEFIELD\s+"?' 
-                  . preg_quote($fieldName, '/') 
-                  . '"?\s*<\/w:instrText>.*?<w:fldChar\s[^>]*w:fldCharType="end"[^>]*>/s';
-        $xml = preg_replace($pattern2, $replacement, $xml);
-    }
-    return $xml;
+<div class="titles">
+  <h1>Pre-Departure Orientation Seminar</h1>
+  <h2>Certificate of Attendance</h2>
+</div>
+
+<div class="div-thick"></div>
+<div class="div-thin"></div>
+
+<table class="info">
+  <tr>
+    <td class="lbl">Name of OFW :</td>
+    <td class="val">'.e($fn.' '.$mi.' '.$sn).'</td>
+  </tr>
+  <tr>
+    <td class="lbl">Skill / Occupation :</td>
+    <td class="val">'.e($rank).'</td>
+  </tr>
+  <tr>
+    <td class="lbl">Country of Destination :</td>
+    <td class="val">WORLD WIDE</td>
+  </tr>
+  <tr>
+    <td class="lbl">Local Recruitment Agency :</td>
+    <td class="val">88 ACES MARITIME SERVICES INC.</td>
+  </tr>
+  <tr>
+    <td class="lbl">Foreign Principal :</td>
+    <td class="val">'.e($principal).'</td>
+  </tr>
+  <tr>
+    <td class="lbl">Foreign Employer :</td>
+    <td class="val">'.e($principal).'</td>
+  </tr>
+</table>
+
+<div class="div-thick"></div>
+
+<div class="certify">
+  This certifies that the above named OFW has completed the prescribed requirements
+  for the above program, held on <u>'.e($fullDate).'</u> with Certificate No.
+  <u>PDOS-'.e($cert).'</u>.
+</div>
+
+<div class="sigs">
+  <div class="sig">
+    <div class="sig-line" style="margin-top:16mm;">
+      <div class="sig-name">MR. JAY B. ALFARO</div>
+      <div class="sig-role">Accredited Trainor</div>
+    </div>
+  </div>
+  <div class="sig">
+    <img src="'.e($sig2).'">
+    <div class="sig-line">
+      <div class="sig-name">CAPT. CRISANDO S. BLAS</div>
+      <div class="sig-role">President</div>
+    </div>
+  </div>
+</div>
+
+</div></body></html>';
+}
+
+// ============================================================
+// SECAT CERTIFICATE — matches PDF exactly
+// ============================================================
+function pdfSECAT($fullName, $fullDate, $facilitator, $cert, $d): string {
+    $border   = b64img($d.'secat_image1.png');
+    $logo88   = b64img($d.'secat_image2.png');
+    $secat    = b64img($d.'secat_image3.jpeg');
+    $optimumS = b64img($d.'secat_image4.jpeg');
+    $optimumM = b64img($d.'secat_image5.png');
+    $optra    = b64img($d.'secat_image6.png');
+
+    return '<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Times New Roman",serif;background:#fff;}
+.page{width:210mm;min-height:297mm;padding:16mm 20mm;position:relative;}
+.bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
+.content{position:relative;z-index:1;}
+/* Header */
+.certno-row{text-align:right;font-size:9pt;color:#333;margin-bottom:2mm;}
+.logo-row{text-align:center;margin-bottom:5mm;}
+.logo-row img{height:18mm;}
+/* Title */
+.title{text-align:center;margin-bottom:6mm;}
+.title h1{font-size:22pt;font-weight:normal;color:#111;margin-bottom:1mm;}
+/* Granted */
+.granted{text-align:center;font-size:11pt;color:#333;margin-bottom:3mm;}
+/* Name */
+.name{text-align:center;font-size:24pt;font-weight:bold;color:#111;
+      margin:0 8mm 2mm;border-bottom:2px solid #111;padding-bottom:2mm;
+      display:block;}
+/* Body */
+.body-p{text-align:center;font-size:11pt;color:#333;line-height:1.8;margin-bottom:2mm;}
+/* Training labels */
+.training-type{text-align:center;font-size:13pt;font-weight:bold;color:#111;margin:2mm 0;}
+.training-sub{text-align:center;font-size:11pt;font-weight:bold;color:#111;margin-bottom:2mm;}
+/* Signatures */
+.sigs{display:flex;justify-content:space-between;margin:12mm 5mm 6mm;}
+.sig{text-align:center;width:44%;}
+.sig-line{border-top:1.5px solid #111;padding-top:2mm;}
+.sig-label{font-size:9.5pt;color:#555;}
+.sig-val{font-size:10pt;font-weight:bold;margin-top:1mm;}
+/* Bottom logos */
+.logos-bot{display:flex;justify-content:center;align-items:center;gap:10mm;margin-top:4mm;}
+.logos-bot img{height:12mm;}
+/* SECAT logo center */
+.secat-logo{text-align:center;margin:3mm 0;}
+.secat-logo img{height:18mm;}
+/* Footer */
+.footer{text-align:center;font-size:7.5pt;color:#888;margin-top:4mm;}
+.footer strong{color:#1a237e;}
+</style></head><body><div class="page">
+<img class="bg" src="'.e($border).'">
+<div class="content">
+
+  <div class="certno-row">Certificate No.: '.e($cert).'</div>
+  <div class="logo-row"><img src="'.e($logo88).'"></div>
+
+  <div class="title"><h1>Certificate of Training Completion</h1></div>
+
+  <div class="granted">is hereby granted to</div>
+
+  <div style="text-align:center;margin:0 8mm 5mm;">
+    <span class="name">'.e($fullName).'</span>
+  </div>
+
+  <div class="body-p">to certify his/her successful completion of the</div>
+
+  <div class="training-type">SHIP EMERGENCY CARE ATTENDANT TRAINING</div>
+
+  <div class="secat-logo"><img src="'.e($secat).'"></div>
+
+  <div class="sigs">
+    <div class="sig">
+      <div class="sig-line">
+        <div class="sig-label">Facilitator</div>
+        <div class="sig-val">'.e($facilitator).'</div>
+      </div>
+    </div>
+    <div class="sig">
+      <div class="sig-line">
+        <div class="sig-label">Training Date</div>
+        <div class="sig-val">'.e($fullDate).'</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="logos-bot">
+    <img src="'.e($optimumS).'">
+    <img src="'.e($optra).'">
+    <img src="'.e($optimumM).'">
+  </div>
+
+  <div class="footer">
+    <strong>QD-TRA-04 Rev 0 30 November 2022</strong><br>
+    *for certificate verification please send an email to: manila.training@shipmanning.net*
+  </div>
+
+</div>
+</div></body></html>';
 }

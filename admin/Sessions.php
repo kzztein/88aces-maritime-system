@@ -2,71 +2,74 @@
 require_once '../config.php';
 requireLogin();
 
-$db    = getDB();
-$admin = currentAdmin();
+$db     = getDB();
+$admin  = currentAdmin();
 $action = $_GET['action'] ?? 'list';
 $id     = (int)($_GET['id'] ?? 0);
 $msg    = '';
 $error  = '';
 
 $trainingTypes = [
-    'anti_piracy'     => ['label' => 'Anti-Piracy Awareness',                    'icon' => '⚓', 'color' => '#1a4a8a', 'prefix' => 'APAT', 'title' => 'ANTI-PIRACY AWARENESS TRAINING'],
-    'pdos'            => ['label' => 'PDOS (Pre-Departure Orientation Seminar)',  'icon' => '✈️', 'color' => '#16a34a', 'prefix' => 'PDOS', 'title' => 'PRE-DEPARTURE ORIENTATION SEMINAR'],
-    'secat'           => ['label' => 'SECAT (Ship Emergency Care Attendant)',     'icon' => '🚑', 'color' => '#d97706', 'prefix' => 'SECAT','title' => 'SHIP EMERGENCY CARE ATTENDANT TRAINING'],
-    'attendance_only' => ['label' => 'Attendance Only',                           'icon' => '📋', 'color' => '#6b7280', 'prefix' => 'ATT',  'title' => 'ATTENDANCE'],
+    'anti_piracy'     => ['label'=>'Anti-Piracy Awareness',                   'icon'=>'⚓','color'=>'#1a4a8a','prefix'=>'APAT', 'title'=>'ANTI-PIRACY AWARENESS TRAINING'],
+    'pdos'            => ['label'=>'PDOS (Pre-Departure Orientation Seminar)', 'icon'=>'✈️','color'=>'#16a34a','prefix'=>'PDOS', 'title'=>'PRE-DEPARTURE ORIENTATION SEMINAR'],
+    'secat'           => ['label'=>'SECAT (Ship Emergency Care Attendant)',    'icon'=>'🚑','color'=>'#d97706','prefix'=>'SECAT','title'=>'SHIP EMERGENCY CARE ATTENDANT TRAINING'],
+    'attendance_only' => ['label'=>'Attendance Only',                          'icon'=>'📋','color'=>'#6b7280','prefix'=>'ATT',  'title'=>'ATTENDANCE'],
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = $_POST['action'] ?? '';
 
     if ($postAction === 'create' || $postAction === 'update') {
-        $courseTitle   = trim($_POST['course_title'] ?? '');
-        $trainingType  = $_POST['training_type']   ?? 'anti_piracy';
-        $dateConducted = $_POST['date_conducted']  ?? '';
-        $timeStart     = $_POST['time_start']      ?? '';
-        $timeEnd       = $_POST['time_end']        ?? '';
-        $location      = trim($_POST['location']   ?? '');
-        $facilitator   = trim($_POST['facilitator']?? '');
-        $company       = trim($_POST['company']    ?? '88 ACES MARITIME SERVICES INC.');
+        $courseTitle   = trim($_POST['course_title']  ?? '');
+        $trainingType  = $_POST['training_type']      ?? 'anti_piracy';
+        $dateConducted = $_POST['date_conducted']     ?? '';
+        $timeStart     = $_POST['time_start']         ?? '';
+        $timeEnd       = $_POST['time_end']           ?? '';
+        $location      = trim($_POST['location']      ?? '');
+        $facilitator   = trim($_POST['facilitator']   ?? '');
+        $company       = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
+        $principal     = trim($_POST['principal']     ?? '');
 
         if (!$courseTitle || !$dateConducted || !$location || !$facilitator) {
             $error = 'Please fill in all required fields.';
+        } elseif ($trainingType === 'pdos' && !$principal) {
+            $error = 'Foreign Principal / Employer is required for PDOS sessions.';
         } else {
             if ($postAction === 'create') {
                 $token = generateToken(16);
                 $code  = generateSessionCode();
-                $stmt  = $db->prepare(
+                $db->prepare(
                     "INSERT INTO training_sessions
-                     (session_code,course_title,training_type,date_conducted,time_start,time_end,location,facilitator,company,qr_token,created_by)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?)"
-                );
-                $stmt->execute([$code,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,$location,$facilitator,$company,$token,$admin['id']]);
+                     (session_code,course_title,training_type,date_conducted,time_start,time_end,
+                      location,facilitator,company,principal,qr_token,created_by)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+                )->execute([$code,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
+                             $location,$facilitator,$company,$principal,$token,$admin['id']]);
                 $newId = $db->lastInsertId();
                 auditLog('CREATE_SESSION','session',$newId,"Code: $code");
-                $msg = 'Training session created successfully!';
-                header("Location: sessions.php?action=view&id=$newId&msg=" . urlencode($msg));
+                header("Location: sessions.php?action=view&id=$newId&msg=Session+created!");
                 exit;
             } else {
-                $stmt = $db->prepare(
+                $db->prepare(
                     "UPDATE training_sessions SET course_title=?,training_type=?,date_conducted=?,
-                     time_start=?,time_end=?,location=?,facilitator=?,company=? WHERE id=?"
-                );
-                $stmt->execute([$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,$location,$facilitator,$company,$id]);
+                     time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=? WHERE id=?"
+                )->execute([$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
+                             $location,$facilitator,$company,$principal,$id]);
                 auditLog('UPDATE_SESSION','session',$id);
-                $msg = 'Session updated successfully.';
+                $msg = 'Session updated.';
             }
         }
     }
 
     if ($postAction === 'toggle_status') {
         $sid = (int)$_POST['session_id'];
-        $cur = $db->prepare("SELECT status, training_type FROM training_sessions WHERE id=?");
+        $cur = $db->prepare("SELECT status,training_type FROM training_sessions WHERE id=?");
         $cur->execute([$sid]);
-        $current = $cur->fetch();
-        $newStatus = ($current['status'] === 'open') ? 'closed' : 'open';
+        $current   = $cur->fetch();
+        $newStatus = $current['status'] === 'open' ? 'closed' : 'open';
         $db->prepare("UPDATE training_sessions SET status=? WHERE id=?")->execute([$newStatus,$sid]);
         if ($newStatus === 'closed') {
-            generateCertificatesForSession($sid, $db, $admin['id'], $current['training_type']);
+            generateCertsForSession($sid, $db, $admin['id'], $current['training_type']);
         }
         header("Location: sessions.php?action=view&id=$sid&msg=Status+updated.");
         exit;
@@ -81,24 +84,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if ($action === 'delete' && $id) $action = 'list';
-
 $session = null;
 if ($id) {
-    $stmt = $db->prepare("SELECT * FROM training_sessions WHERE id=?");
-    $stmt->execute([$id]);
-    $session = $stmt->fetch();
+    $s = $db->prepare("SELECT * FROM training_sessions WHERE id=?");
+    $s->execute([$id]);
+    $session = $s->fetch();
 }
 
 $attendees = [];
 if ($action === 'view' && $session) {
-    $stmt = $db->prepare(
-        "SELECT a.*, c.cert_number, c.pdf_filename FROM attendees a
+    $a = $db->prepare(
+        "SELECT a.*, c.cert_number FROM attendees a
          LEFT JOIN certificates c ON c.attendee_id = a.id
-         WHERE a.session_id = ? ORDER BY a.submitted_at ASC"
+         WHERE a.session_id=? ORDER BY a.submitted_at ASC"
     );
-    $stmt->execute([$id]);
-    $attendees = $stmt->fetchAll();
+    $a->execute([$id]);
+    $attendees = $a->fetchAll();
 }
 
 $sessions = [];
@@ -106,27 +107,27 @@ if ($action === 'list') {
     $sessions = $db->query(
         "SELECT ts.*, COUNT(a.id) as attendee_count
          FROM training_sessions ts
-         LEFT JOIN attendees a ON a.session_id = ts.id
+         LEFT JOIN attendees a ON a.session_id=ts.id
          GROUP BY ts.id ORDER BY ts.created_at DESC"
     )->fetchAll();
 }
 
 $msg = $msg ?: sanitize($_GET['msg'] ?? '');
 
-function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string $trainingType): void {
+function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type): void {
     global $trainingTypes;
-    $prefix = $trainingTypes[$trainingType]['prefix'] ?? 'CERT';
+    $prefix    = $trainingTypes[$type]['prefix'] ?? 'CERT';
     $attendees = $db->prepare("SELECT * FROM attendees WHERE session_id=? AND cert_number IS NULL");
     $attendees->execute([$sid]);
     foreach ($attendees->fetchAll() as $a) {
-        $year  = date('Y');
-        $count = $db->query("SELECT COUNT(*) FROM certificates WHERE YEAR(generated_at) = $year")->fetchColumn();
+        $year    = date('Y');
+        $count   = $db->query("SELECT COUNT(*) FROM certificates WHERE YEAR(generated_at)=$year")->fetchColumn();
         $certNum = $prefix . ' ' . $year . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-        $db->prepare("UPDATE attendees SET cert_number=?, cert_issued_at=NOW() WHERE id=?")->execute([$certNum, $a['id']]);
+        $db->prepare("UPDATE attendees SET cert_number=?,cert_issued_at=NOW() WHERE id=?")->execute([$certNum,$a['id']]);
         $db->prepare(
             "INSERT INTO certificates (attendee_id,session_id,cert_number,cert_type,generated_by)
              VALUES (?,?,?,'anti_piracy',?) ON DUPLICATE KEY UPDATE cert_number=VALUES(cert_number)"
-        )->execute([$a['id'], $sid, $certNum, $adminId]);
+        )->execute([$a['id'],$sid,$certNum,$adminId]);
     }
 }
 ?>
@@ -135,27 +136,21 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string 
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Training Sessions — 88 Aces Maritime</title>
+<title>Training Sessions — 88 Aces</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/admin.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-.type-card {
-  cursor: pointer;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #fff;
-  transition: all .2s;
-}
-.type-card:hover { border-color: #93c5fd; background: #f8faff; }
-.type-card.selected { border-color: var(--type-color); background: rgba(26,74,138,0.04); }
-.type-card .type-icon { font-size: 26px; }
-.type-card .type-label { font-weight: 600; font-size: 13px; color: #1f2937; }
-.type-card .type-sub   { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.type-card{cursor:pointer;border:2px solid #e5e7eb;border-radius:10px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;background:#fff;transition:all .2s;}
+.type-card:hover{border-color:#93c5fd;background:#f8faff;}
+.type-card.selected{background:#f0f7ff;}
+.type-icon{font-size:24px;}
+.type-label{font-weight:600;font-size:13px;color:#1f2937;}
+.type-sub{font-size:11px;color:#9ca3af;margin-top:2px;}
+.principal-field{display:none;animation:fadeIn .3s ease;}
+.principal-field.show{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -164,15 +159,11 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string 
   <?php include 'partials/topbar.php'; ?>
   <div class="page-body">
 
-    <?php if ($msg): ?>
-      <div class="alert alert-success"><?= sanitize($msg) ?></div>
-    <?php endif; ?>
-    <?php if ($error): ?>
-      <div class="alert alert-danger"><?= sanitize($error) ?></div>
-    <?php endif; ?>
+    <?php if ($msg):?><div class="alert alert-success"><?=sanitize($msg)?></div><?php endif;?>
+    <?php if ($error):?><div class="alert alert-danger"><?=sanitize($error)?></div><?php endif;?>
 
+    <?php if ($action==='list'): ?>
     <!-- ── LIST ── -->
-    <?php if ($action === 'list'): ?>
     <div class="page-header">
       <h2>Training Sessions</h2>
       <a href="sessions.php?action=create" class="btn btn-primary">+ New Session</a>
@@ -181,229 +172,238 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string 
       <div class="table-wrap">
         <table class="data-table">
           <thead>
-            <tr>
-              <th>Code</th><th>Course Title</th><th>Type</th>
-              <th>Date</th><th>Location</th><th>Attendees</th>
-              <th>Status</th><th>Actions</th>
-            </tr>
+            <tr><th>Code</th><th>Course Title</th><th>Type</th><th>Date</th>
+                <th>Location</th><th>Attendees</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
-          <?php foreach ($sessions as $s): 
-            $tInfo = $trainingTypes[$s['training_type']] ?? $trainingTypes['attendance_only'];
-          ?>
+          <?php foreach ($sessions as $s):
+            $ti = $trainingTypes[$s['training_type']] ?? $trainingTypes['attendance_only'];?>
             <tr>
-              <td><code><?= sanitize($s['session_code']) ?></code></td>
-              <td><?= sanitize($s['course_title']) ?></td>
-              <td>
-                <span style="background:<?= $tInfo['color'] ?>22;color:<?= $tInfo['color'] ?>;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
-                  <?= $tInfo['icon'] ?> <?= $tInfo['label'] ?>
-                </span>
-              </td>
-              <td><?= date('M d, Y', strtotime($s['date_conducted'])) ?></td>
-              <td><?= sanitize($s['location']) ?></td>
-              <td><span class="badge"><?= $s['attendee_count'] ?></span></td>
-              <td><span class="status-badge <?= $s['status']==='open'?'status-open':'status-closed' ?>"><?= ucfirst($s['status']) ?></span></td>
+              <td><code><?=sanitize($s['session_code'])?></code></td>
+              <td><?=sanitize($s['course_title'])?></td>
+              <td><span style="background:<?=$ti['color']?>22;color:<?=$ti['color']?>;
+                    padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
+                  <?=$ti['icon']?> <?=$ti['label']?></span></td>
+              <td><?=date('M d, Y',strtotime($s['date_conducted']))?></td>
+              <td><?=sanitize($s['location'])?></td>
+              <td><span class="badge"><?=$s['attendee_count']?></span></td>
+              <td><span class="status-badge <?=$s['status']==='open'?'status-open':'status-closed'?>">
+                  <?=ucfirst($s['status'])?></span></td>
               <td class="actions">
-                <a href="sessions.php?action=view&id=<?= $s['id'] ?>" title="View">👁</a>
-                <a href="#" onclick="showQR('<?= APP_URL ?>/seafarer/form.php?token=<?= $s['qr_token'] ?>','<?= sanitize($s['course_title']) ?>');return false;" title="QR">📱</a>
-                <a href="sessions.php?action=edit&id=<?= $s['id'] ?>" title="Edit">✏️</a>
-                <a href="../api/download.php?type=attendance&id=<?= $s['id'] ?>" title="PDF" target="_blank">⬇PDF</a>
-                <a href="../api/excel.php?type=attendance&id=<?= $s['id'] ?>" title="Excel" target="_blank">📊XLS</a>
-                <a href="#" onclick="confirmDelete(<?= $s['id'] ?>);return false;" title="Delete">🗑</a>
+                <a href="sessions.php?action=view&id=<?=$s['id']?>" title="View">👁</a>
+                <a href="#" onclick="showQR('<?=APP_URL?>/seafarer/form.php?token=<?=$s['qr_token']?>','<?=sanitize($s['course_title'])?>');return false;" title="QR">📱</a>
+                <a href="sessions.php?action=edit&id=<?=$s['id']?>" title="Edit">✏️</a>
+                <a href="../api/download.php?type=attendance&id=<?=$s['id']?>" title="PDF" target="_blank">⬇PDF</a>
+                <a href="../api/excel.php?type=attendance&id=<?=$s['id']?>" title="Excel" target="_blank">📊XLS</a>
+                <a href="#" onclick="confirmDelete(<?=$s['id']?>);return false;" title="Delete">🗑</a>
               </td>
             </tr>
-          <?php endforeach; ?>
-          <?php if (empty($sessions)): ?>
+          <?php endforeach;?>
+          <?php if(empty($sessions)):?>
             <tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">No sessions yet.</td></tr>
-          <?php endif; ?>
+          <?php endif;?>
           </tbody>
         </table>
       </div>
     </div>
 
+    <?php elseif ($action==='create'||($action==='edit'&&$session)): ?>
     <!-- ── CREATE / EDIT ── -->
-    <?php elseif ($action === 'create' || ($action === 'edit' && $session)): ?>
     <div class="page-header">
-      <h2><?= $action === 'create' ? '+ Create New Session' : '✏ Edit Session' ?></h2>
+      <h2><?=$action==='create'?'+ New Session':'✏ Edit Session'?></h2>
       <a href="sessions.php" class="btn btn-outline">← Back</a>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <form method="POST">
-          <input type="hidden" name="action" value="<?= $action === 'create' ? 'create' : 'update' ?>">
-          <?php if ($action === 'edit'): ?>
-            <input type="hidden" name="session_id" value="<?= $id ?>">
-          <?php endif; ?>
+    <div class="card"><div class="card-body">
+      <form method="POST">
+        <input type="hidden" name="action" value="<?=$action==='create'?'create':'update'?>">
+        <?php if($action==='edit'):?><input type="hidden" name="session_id" value="<?=$id?>"><?php endif;?>
 
-          <!-- Training Type Selector -->
-          <div class="form-group" style="margin-bottom:24px">
-            <label style="display:block;margin-bottom:10px;font-weight:600">Training Type *</label>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-              <?php foreach ($trainingTypes as $typeVal => $tInfo): 
-                $isSelected = ($session['training_type'] ?? 'anti_piracy') === $typeVal;
-              ?>
-              <label class="type-card <?= $isSelected ? 'selected' : '' ?>"
-                     style="--type-color:<?= $tInfo['color'] ?>"
-                     onclick="selectType('<?= $typeVal ?>','<?= $tInfo['color'] ?>','<?= addslashes($tInfo['title']) ?>')">
-                <input type="radio" name="training_type" value="<?= $typeVal ?>"
-                       <?= $isSelected ? 'checked' : '' ?> style="display:none">
-                <span class="type-icon"><?= $tInfo['icon'] ?></span>
-                <div>
-                  <div class="type-label"><?= $tInfo['label'] ?></div>
-                  <div class="type-sub">Prefix: <?= $tInfo['prefix'] ?>-YYYY-XXXX</div>
-                </div>
-              </label>
-              <?php endforeach; ?>
-            </div>
+        <!-- Training Type Selector -->
+        <div class="form-group" style="margin-bottom:20px">
+          <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px">Training Type *</label>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+            <?php foreach($trainingTypes as $tv=>$ti):
+              $sel = ($session['training_type']??'anti_piracy')===$tv;?>
+            <label class="type-card <?=$sel?'selected':''?>"
+                   id="card_<?=$tv?>"
+                   style="border-color:<?=$sel?$ti['color']:'#e5e7eb'?>;background:<?=$sel?$ti['color'].'10':'#fff'?>"
+                   onclick="selectType('<?=$tv?>','<?=$ti['color']?>','<?=addslashes($ti['title'])?>')">
+              <input type="radio" name="training_type" value="<?=$tv?>" <?=$sel?'checked':''?> style="display:none">
+              <span class="type-icon"><?=$ti['icon']?></span>
+              <div>
+                <div class="type-label"><?=$ti['label']?></div>
+                <div class="type-sub">Cert prefix: <?=$ti['prefix']?>-YYYY-XXXX</div>
+              </div>
+            </label>
+            <?php endforeach;?>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Course Title *</label>
+            <input type="text" name="course_title" id="courseTitle"
+                   value="<?=sanitize($session['course_title']??'ANTI-PIRACY AWARENESS TRAINING')?>" required>
+          </div>
+          <div class="form-group">
+            <label>Date Conducted *</label>
+            <input type="date" name="date_conducted" value="<?=$session['date_conducted']??date('Y-m-d')?>" required>
+          </div>
+          <div class="form-group">
+            <label>Time Start</label>
+            <input type="time" name="time_start" value="<?=$session['time_start']??'08:00'?>">
+          </div>
+          <div class="form-group">
+            <label>Time End</label>
+            <input type="time" name="time_end" value="<?=$session['time_end']??'17:00'?>">
+          </div>
+          <div class="form-group">
+            <label>Location *</label>
+            <input type="text" name="location" value="<?=sanitize($session['location']??'')?>"
+                   placeholder="e.g. 12th Floor Trium Square Building" required>
+          </div>
+          <div class="form-group">
+            <label>Facilitator *</label>
+            <input type="text" name="facilitator" value="<?=sanitize($session['facilitator']??'')?>"
+                   placeholder="Facilitator name" required>
+          </div>
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" name="company" value="<?=sanitize($session['company']??'88 ACES MARITIME SERVICES INC.')?>">
           </div>
 
-          <div class="form-grid">
-            <div class="form-group full">
-              <label>Course Title *</label>
-              <input type="text" name="course_title" id="courseTitle"
-                     value="<?= sanitize($session['course_title'] ?? 'ANTI-PIRACY AWARENESS TRAINING') ?>" required>
-            </div>
-            <div class="form-group">
-              <label>Date Conducted *</label>
-              <input type="date" name="date_conducted" value="<?= $session['date_conducted'] ?? date('Y-m-d') ?>" required>
-            </div>
-            <div class="form-group">
-              <label>Time Start</label>
-              <input type="time" name="time_start" value="<?= $session['time_start'] ?? '08:00' ?>">
-            </div>
-            <div class="form-group">
-              <label>Time End</label>
-              <input type="time" name="time_end" value="<?= $session['time_end'] ?? '17:00' ?>">
-            </div>
-            <div class="form-group">
-              <label>Location *</label>
-              <input type="text" name="location" value="<?= sanitize($session['location'] ?? '') ?>"
-                     placeholder="e.g. 12th Floor Trium Square Building" required>
-            </div>
-            <div class="form-group">
-              <label>Facilitator *</label>
-              <input type="text" name="facilitator" value="<?= sanitize($session['facilitator'] ?? '') ?>"
-                     placeholder="Facilitator name" required>
-            </div>
-            <div class="form-group">
-              <label>Company</label>
-              <input type="text" name="company" value="<?= sanitize($session['company'] ?? '88 ACES MARITIME SERVICES INC.') ?>">
-            </div>
+          <!-- PDOS ONLY: Principal field -->
+          <div class="form-group full principal-field <?=($session['training_type']??'')==='pdos'?'show':''?>" id="principalField">
+            <label style="color:#16a34a;font-weight:700">
+              ✈️ Foreign Principal / Employer *
+              <span style="font-size:11px;font-weight:400;color:#6b7280">(Required for PDOS — will appear on certificate)</span>
+            </label>
+            <input type="text" name="principal" id="principalInput"
+                   value="<?=sanitize($session['principal']??'')?>"
+                   placeholder="e.g. PRINCESS CRUISE LINES LTD.">
+            <p style="font-size:11px;color:#6b7280;margin-top:4px">
+              This will fill in both "Foreign Principal" and "Foreign Employer" fields on the PDOS certificate.
+            </p>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-              <?= $action === 'create' ? '✓ Create Session' : '✓ Save Changes' ?>
-            </button>
-            <a href="sessions.php" class="btn btn-outline">Cancel</a>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
 
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <?=$action==='create'?'✓ Create Session':'✓ Save Changes'?>
+          </button>
+          <a href="sessions.php" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div></div>
+
+    <?php elseif($action==='view'&&$session):
+      $ti = $trainingTypes[$session['training_type']]??$trainingTypes['attendance_only'];?>
     <!-- ── VIEW SESSION ── -->
-    <?php elseif ($action === 'view' && $session): 
-      $tInfo = $trainingTypes[$session['training_type']] ?? $trainingTypes['attendance_only'];
-    ?>
     <div class="page-header">
       <div>
-        <h2><?= sanitize($session['course_title']) ?></h2>
+        <h2><?=sanitize($session['course_title'])?></h2>
         <p style="color:#6b7280;font-size:14px;margin-top:4px">
-          <?= sanitize($session['session_code']) ?> ·
-          <?= date('F d, Y', strtotime($session['date_conducted'])) ?> ·
-          <span style="background:<?= $tInfo['color'] ?>22;color:<?= $tInfo['color'] ?>;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">
-            <?= $tInfo['icon'] ?> <?= $tInfo['label'] ?>
+          <?=sanitize($session['session_code'])?> ·
+          <?=date('F d, Y',strtotime($session['date_conducted']))?> ·
+          <span style="background:<?=$ti['color']?>22;color:<?=$ti['color']?>;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">
+            <?=$ti['icon']?> <?=$ti['label']?>
           </span>
+          <?php if(!empty($session['principal'])):?>
+            · <span style="font-size:12px;color:#16a34a">✈️ <?=sanitize($session['principal'])?></span>
+          <?php endif;?>
         </p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <a href="sessions.php" class="btn btn-outline btn-sm">← Back</a>
-        <a href="sessions.php?action=edit&id=<?= $id ?>" class="btn btn-outline btn-sm">✏ Edit</a>
-        <button onclick="showQR('<?= APP_URL ?>/seafarer/form.php?token=<?= $session['qr_token'] ?>','<?= sanitize($session['course_title']) ?>')" class="btn btn-outline btn-sm">📱 QR Code</button>
-        <a href="../api/download.php?type=attendance&id=<?= $id ?>" class="btn btn-primary btn-sm" target="_blank">⬇ Attendance PDF</a>
-        <a href="../api/excel.php?type=attendance&id=<?= $id ?>" class="btn btn-success btn-sm" target="_blank">📊 Attendance Excel</a>
-        <?php if ($session['status'] === 'closed'): ?>
-          <a href="../api/download.php?type=report&id=<?= $id ?>" class="btn btn-primary btn-sm" target="_blank">📊 Report PDF</a>
-          <a href="../api/excel.php?type=report&id=<?= $id ?>" class="btn btn-success btn-sm" target="_blank">📊 Report Excel</a>
-        <?php endif; ?>
+        <a href="sessions.php?action=edit&id=<?=$id?>" class="btn btn-outline btn-sm">✏ Edit</a>
+        <button onclick="showQR('<?=APP_URL?>/seafarer/form.php?token=<?=$session['qr_token']?>','<?=sanitize($session['course_title'])?>')" class="btn btn-outline btn-sm">📱 QR Code</button>
+        <a href="../api/download.php?type=attendance&id=<?=$id?>" class="btn btn-primary btn-sm" target="_blank">⬇ Attendance PDF</a>
+        <a href="../api/excel.php?type=attendance&id=<?=$id?>" class="btn btn-success btn-sm" target="_blank">📊 Excel</a>
+        <?php if($session['status']==='closed'):?>
+          <a href="../api/download.php?type=report&id=<?=$id?>" class="btn btn-primary btn-sm" target="_blank">📊 Report</a>
+        <?php endif;?>
         <form method="POST" style="display:inline">
           <input type="hidden" name="action" value="toggle_status">
-          <input type="hidden" name="session_id" value="<?= $id ?>">
-          <button type="submit"
-                  class="btn <?= $session['status']==='open'?'btn-danger':'btn-success' ?> btn-sm"
-                  onclick="return confirm('<?= $session['status']==='open'?'Close this session and generate certificates?':'Reopen this session?' ?>')">
-            <?= $session['status']==='open' ? '🔒 Close Session' : '🔓 Reopen Session' ?>
+          <input type="hidden" name="session_id" value="<?=$id?>">
+          <button type="submit" class="btn <?=$session['status']==='open'?'btn-danger':'btn-success'?> btn-sm"
+            onclick="return confirm('<?=$session['status']==='open'?'Close session and auto-generate all certificates?':'Reopen session?'?>')">
+            <?=$session['status']==='open'?'🔒 Close & Generate Certs':'🔓 Reopen'?>
           </button>
         </form>
       </div>
     </div>
 
+    <!-- Session info card -->
     <div class="card" style="margin-bottom:20px">
       <div class="card-body">
         <div class="form-grid">
-          <div><strong>Location:</strong> <?= sanitize($session['location']) ?></div>
-          <div><strong>Facilitator:</strong> <?= sanitize($session['facilitator']) ?></div>
-          <div><strong>Time:</strong> <?= date('h:i A', strtotime($session['time_start'])) ?> – <?= date('h:i A', strtotime($session['time_end'])) ?></div>
-          <div><strong>Company:</strong> <?= sanitize($session['company']) ?></div>
+          <div><strong>Location:</strong> <?=sanitize($session['location'])?></div>
+          <div><strong>Facilitator:</strong> <?=sanitize($session['facilitator'])?></div>
+          <div><strong>Time:</strong> <?=date('h:i A',strtotime($session['time_start']))?> – <?=date('h:i A',strtotime($session['time_end']))?></div>
+          <div><strong>Company:</strong> <?=sanitize($session['company'])?></div>
+          <?php if(!empty($session['principal'])):?>
+          <div><strong>Principal/Employer:</strong> <?=sanitize($session['principal'])?></div>
+          <?php endif;?>
           <div><strong>Status:</strong>
-            <span class="status-badge <?= $session['status']==='open'?'status-open':'status-closed' ?>">
-              <?= ucfirst($session['status']) ?>
+            <span class="status-badge <?=$session['status']==='open'?'status-open':'status-closed'?>">
+              <?=ucfirst($session['status'])?>
             </span>
           </div>
-          <div><strong>Form Link:</strong>
-            <a href="<?= APP_URL ?>/seafarer/form.php?token=<?= $session['qr_token'] ?>" target="_blank" style="font-size:12px;word-break:break-all">
-              <?= APP_URL ?>/seafarer/form.php?token=<?= $session['qr_token'] ?>
+          <div style="grid-column:1/-1"><strong>Form Link:</strong>
+            <a href="<?=APP_URL?>/seafarer/form.php?token=<?=$session['qr_token']?>" target="_blank" style="font-size:12px">
+              <?=APP_URL?>/seafarer/form.php?token=<?=$session['qr_token']?>
             </a>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Attendees -->
     <div class="card">
       <div class="card-header">
-        <h3>Attendees (<?= count($attendees) ?>)</h3>
-        <?php if ($session['status'] === 'open'): ?>
+        <h3>Attendees (<?=count($attendees)?>)</h3>
+        <?php if($session['status']==='open'):?>
           <span style="font-size:12px;color:#16a34a">● Form is open</span>
-        <?php else: ?>
-          <span style="font-size:12px;color:#6b7280">🔒 Closed — <?= count(array_filter($attendees, fn($a) => $a['cert_number'])) ?> certificates generated</span>
-        <?php endif; ?>
+        <?php else:?>
+          <?php $withCert = count(array_filter($attendees,fn($a)=>$a['cert_number']));?>
+          <span style="font-size:12px;color:#6b7280">🔒 Closed · <?=$withCert?>/<?=count($attendees)?> certificates generated</span>
+        <?php endif;?>
       </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
-            <tr>
-              <th>#</th><th>Surname</th><th>Given Name</th><th>M.I.</th>
-              <th>Rank</th><th>Vessel</th><th>Type</th><th>Cert No.</th><th>Actions</th>
-            </tr>
+            <tr><th>#</th><th>Surname</th><th>Given Name</th><th>M.I.</th>
+                <th>Rank</th><th>Vessel</th><th>Type</th><th>Cert No.</th><th>Actions</th></tr>
           </thead>
           <tbody>
-          <?php foreach ($attendees as $i => $a): ?>
+          <?php foreach($attendees as $i=>$a):?>
             <tr>
-              <td><?= $i+1 ?></td>
-              <td><?= sanitize($a['surname']) ?></td>
-              <td><?= sanitize($a['given_name']) ?></td>
-              <td><?= sanitize($a['middle_initial']) ?></td>
-              <td><?= sanitize($a['rank']) ?></td>
-              <td><?= sanitize($a['vessel']) ?></td>
-              <td><span class="badge" style="background:#fef3c7;color:#92400e"><?= $a['crew_type'] ?></span></td>
-              <td><?= $a['cert_number'] ? '<code>'.sanitize($a['cert_number']).'</code>' : '<span style="color:#9ca3af">Pending</span>' ?></td>
+              <td><?=$i+1?></td>
+              <td><?=sanitize($a['surname'])?></td>
+              <td><?=sanitize($a['given_name'])?></td>
+              <td><?=sanitize($a['middle_initial'])?></td>
+              <td><?=sanitize($a['rank'])?></td>
+              <td><?=sanitize($a['vessel'])?></td>
+              <td><span class="badge" style="background:#fef3c7;color:#92400e"><?=$a['crew_type']?></span></td>
+              <td><?=$a['cert_number']?'<code>'.sanitize($a['cert_number']).'</code>':'<span style="color:#9ca3af">Pending</span>'?></td>
               <td class="actions">
-                <?php if ($a['cert_number']): ?>
-                  <a href="../api/generate_cert.php?id=<?= $a['id'] ?>" title="Download Certificate" target="_blank">🎓 Cert</a>
-                <?php endif; ?>
-                <a href="#" onclick="deleteAttendee(<?= $a['id'] ?>);return false;" title="Delete">🗑</a>
+                <?php if($a['cert_number']):?>
+                  <a href="../api/generate_cert.php?id=<?=$a['id']?>" title="Download PDF Certificate" target="_blank">🎓 PDF</a>
+                <?php endif;?>
+                <a href="#" onclick="delAttendee(<?=$a['id']?>);return false;" title="Remove">🗑</a>
               </td>
             </tr>
-          <?php endforeach; ?>
-          <?php if (empty($attendees)): ?>
+          <?php endforeach;?>
+          <?php if(empty($attendees)):?>
             <tr><td colspan="9" style="text-align:center;padding:40px;color:#9ca3af">
               No attendees yet. Share the QR code or form link.
             </td></tr>
-          <?php endif; ?>
+          <?php endif;?>
           </tbody>
         </table>
       </div>
     </div>
-    <?php endif; ?>
+    <?php endif;?>
 
   </div>
 </main>
@@ -418,9 +418,9 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string 
       <input type="text" id="qrLink" readonly style="width:100%;padding:8px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px">
     </div>
     <div class="modal-actions">
-      <button onclick="copyLink()" class="btn btn-outline btn-sm">📋 Copy Link</button>
-      <button onclick="printQR()"  class="btn btn-primary btn-sm">🖨 Print QR</button>
-      <button onclick="closeQR()"  class="btn btn-outline btn-sm">Close</button>
+      <button onclick="copyLink()" class="btn btn-outline btn-sm">📋 Copy</button>
+      <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print</button>
+      <button onclick="closeQR()" class="btn btn-outline btn-sm">Close</button>
     </div>
   </div>
 </div>
@@ -429,17 +429,17 @@ function generateCertificatesForSession(int $sid, PDO $db, int $adminId, string 
   <input type="hidden" name="action" value="delete">
   <input type="hidden" name="session_id" id="deleteId">
 </form>
-<form id="deleteAttendeeForm" method="POST" action="../api/attendees.php">
+<form id="delAttendeeForm" method="POST" action="../api/attendees.php">
   <input type="hidden" name="action" value="delete">
-  <input type="hidden" name="id" id="deleteAttendeeId">
+  <input type="hidden" name="id" id="delAttendeeId">
 </form>
 
 <script>
 const courseTitles = {
-  anti_piracy:     'ANTI-PIRACY AWARENESS TRAINING',
-  pdos:            'PRE-DEPARTURE ORIENTATION SEMINAR',
-  secat:           'SHIP EMERGENCY CARE ATTENDANT TRAINING',
-  attendance_only: 'ATTENDANCE ONLY',
+  anti_piracy:'ANTI-PIRACY AWARENESS TRAINING',
+  pdos:'PRE-DEPARTURE ORIENTATION SEMINAR',
+  secat:'SHIP EMERGENCY CARE ATTENDANT TRAINING',
+  attendance_only:'ATTENDANCE'
 };
 
 function selectType(type, color, title) {
@@ -448,38 +448,54 @@ function selectType(type, color, title) {
     const isThis = radio.value === type;
     radio.checked = isThis;
     card.classList.toggle('selected', isThis);
-    card.style.setProperty('--type-color', isThis ? color : '#e5e7eb');
     card.style.borderColor = isThis ? color : '#e5e7eb';
     card.style.background  = isThis ? color + '10' : '#fff';
   });
-  const titleInput = document.getElementById('courseTitle');
-  if (titleInput) titleInput.value = title || courseTitles[type] || '';
+  const t = document.getElementById('courseTitle');
+  if (t) t.value = title || courseTitles[type] || '';
+
+  // Show/hide principal field for PDOS
+  const pf = document.getElementById('principalField');
+  const pi = document.getElementById('principalInput');
+  if (pf) {
+    pf.classList.toggle('show', type === 'pdos');
+    if (pi) pi.required = type === 'pdos';
+  }
 }
+
+// Init on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const checked = document.querySelector('input[name="training_type"]:checked');
+  if (checked) {
+    const pf = document.getElementById('principalField');
+    const pi = document.getElementById('principalInput');
+    if (pf) pf.classList.toggle('show', checked.value === 'pdos');
+    if (pi) pi.required = checked.value === 'pdos';
+  }
+});
 
 let qrInstance = null;
 function showQR(url, title) {
   document.getElementById('qrTitle').textContent = title;
   document.getElementById('qrLink').value = url;
-  const container = document.getElementById('qrcode');
-  container.innerHTML = '';
-  qrInstance = new QRCode(container, { text: url, width: 220, height: 220 });
+  document.getElementById('qrcode').innerHTML = '';
+  qrInstance = new QRCode(document.getElementById('qrcode'), {text:url,width:220,height:220});
   document.getElementById('qrModal').classList.add('show');
 }
-function closeQR()  { document.getElementById('qrModal').classList.remove('show'); }
-function copyLink() { const i = document.getElementById('qrLink'); i.select(); document.execCommand('copy'); alert('Link copied!'); }
-function printQR()  { window.print(); }
+function closeQR() { document.getElementById('qrModal').classList.remove('show'); }
+function copyLink() { const i=document.getElementById('qrLink');i.select();document.execCommand('copy');alert('Copied!'); }
 function confirmDelete(id) {
-  if (!confirm('Delete this session and ALL attendee data? This cannot be undone.')) return;
+  if (!confirm('Delete this session and all its data? Cannot be undone.')) return;
   document.getElementById('deleteId').value = id;
   document.getElementById('deleteForm').submit();
 }
-function deleteAttendee(id) {
+function delAttendee(id) {
   if (!confirm('Remove this attendee?')) return;
-  document.getElementById('deleteAttendeeId').value = id;
-  document.getElementById('deleteAttendeeForm').submit();
+  document.getElementById('delAttendeeId').value = id;
+  document.getElementById('delAttendeeForm').submit();
 }
 window.addEventListener('click', e => {
-  if (e.target === document.getElementById('qrModal')) closeQR();
+  if (e.target===document.getElementById('qrModal')) closeQR();
 });
 </script>
 </body>
