@@ -188,14 +188,14 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
     background-image:url(' . $pdosBg . ');
     background-repeat:no-repeat;
     background-position:center center;
-    background-size:130mm auto;
+    background-size:170mm auto;
     -webkit-print-color-adjust:exact;
 }
 .body-area::before{
     content:"";
     position:absolute;
     top:0;left:0;right:0;bottom:0;
-    background:rgba(255,255,255,0.75);
+    background:rgba(255,255,255,0.82);
     z-index:0;
 }
 .body-content{position:relative;z-index:1;}
