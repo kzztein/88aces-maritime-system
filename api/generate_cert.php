@@ -112,7 +112,7 @@ function buildAntiPiracy($fn, $mi, $sn, $day, $dayOrd, $month, $year, $cert, $d)
 
     $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:"Times New Roman",serif;background:#fff;color:#111;}
+body{font-family:Georgia,serif;background:#fff;color:#111;}
 .page{width:210mm;min-height:297mm;padding:14mm 18mm 10mm;}
 .logo-row{text-align:center;margin-bottom:2mm;}
 .logo-row img{height:22mm;}
@@ -246,7 +246,7 @@ function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d) {
 
     $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:"Times New Roman",serif;background:#fff;}
+body{font-family:Georgia,serif;background:#fff;}
 .page{width:210mm;min-height:297mm;padding:16mm 20mm;position:relative;}
 .bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
 .content{position:relative;z-index:1;}
@@ -276,7 +276,7 @@ body{font-family:"Times New Roman",serif;background:#fff;}
 <img class="bg" src="' . $border . '">
 <div class="content">
   <div class="certno-row">Certificate No.: ' . $certNo . '</div>
-  <div class="logo-row"><img src="' . s$logo88 . '"></div>
+  <div class="logo-row"><img src="' . $logo88 . '"></div>
   <div class="title"><h1>Certificate of Training Completion</h1></div>
   <div class="granted">is hereby granted to</div>
   <div class="name-wrap"><span class="name-text">' . $nameVal . '</span></div>
