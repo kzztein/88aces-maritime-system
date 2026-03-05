@@ -455,7 +455,7 @@ body{font-family:"Times New Roman",serif;background:#fff;}
 </div>
 </div></body></html>
 HTML;
-}<?php
+}php
 // ============================================================
 // api/generate_cert.php — PDF Certificate Generator
 // Uses heredoc syntax to avoid quote conflicts
