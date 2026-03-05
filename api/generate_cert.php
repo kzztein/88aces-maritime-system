@@ -97,7 +97,7 @@ $mpdf = new \Mpdf\Mpdf(array(
 ));
 
 if (!empty($wmark) && file_exists($wmark)) {
-    $mpdf->SetWatermarkImage($wmark, 0.15, array(130, 100), array(105, 165));
+    $mpdf->SetWatermarkImage($wmark, 0.15, array(150, 115), 'P');
     $mpdf->showWatermarkImage = true;
 }
 
