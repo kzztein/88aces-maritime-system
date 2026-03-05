@@ -175,16 +175,25 @@ function buildPDOS($fn, $mi, $sn, $rank, $principal, $fullDate, $cert, $d) {
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .page{width:210mm;min-height:297mm;padding:8mm 16mm 10mm;position:relative;}
-.logo-wrap{text-align:center;margin-bottom:3mm;}
+.logo-wrap{text-align:center;margin-bottom:2mm;}
 .logo-wrap img{height:22mm;}
-.header-area{position:relative;text-align:center;margin-bottom:3mm;padding:2mm 0;}
-.pdos-watermark{position:absolute;top:50%;left:50%;width:130mm;opacity:0.35;z-index:0;margin-left:-65mm;margin-top:-30mm;}
-.header-titles{position:relative;z-index:1;}
-.dept-text{font-size:8.5pt;color:#555;font-style:italic;letter-spacing:.3px;margin-bottom:1mm;}
-.seminar-text{font-size:13pt;font-weight:900;color:#003087;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1mm;}
-.attend-text{font-size:11pt;font-weight:bold;color:#c0392b;text-transform:uppercase;letter-spacing:1px;text-decoration:underline;}
+.dept-text{font-size:8.5pt;color:#555;font-style:italic;letter-spacing:.3px;text-align:center;margin-bottom:1mm;}
+.seminar-text{font-size:13pt;font-weight:900;color:#003087;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:1mm;}
+.attend-text{font-size:11pt;font-weight:bold;color:#c0392b;text-transform:uppercase;letter-spacing:1px;text-decoration:underline;text-align:center;margin-bottom:2mm;}
 .div-thick{border-top:3px solid #003087;margin:2mm 0 1mm;}
-.div-thin{border-top:1px solid #003087;margin:0 0 3mm;}
+.div-thin{border-top:1px solid #003087;margin:0 0 2mm;}
+/* watermark behind fields */
+.body-area{position:relative;}
+.pdos-watermark{
+    position:absolute;
+    top:50%; left:50%;
+    width:145mm;
+    opacity:0.25;
+    z-index:0;
+    margin-left:-72.5mm;
+    margin-top:-40mm;
+}
+.body-content{position:relative;z-index:1;}
 .info-table{width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:2mm;}
 .info-table td{padding:1.8mm 1mm;vertical-align:bottom;}
 .lbl{font-weight:bold;color:#000;width:52mm;white-space:nowrap;}
@@ -199,30 +208,32 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .sig-name{font-size:10pt;font-weight:bold;text-decoration:underline;color:#000;}
 .sig-role{font-size:9pt;color:#333;font-style:italic;}
 </style></head><body><div class="page">
+
 <div class="logo-wrap"><img src="' . $logo . '"></div>
-<div class="header-area">
-  <img class="pdos-watermark" src="' . $pdosBg . '">
-  <div class="header-titles">
-    <div class="dept-text">DEPARTMENT OF LABOR AND EMPLOYMENT</div>
-    <div class="seminar-text">PRE-DEPARTURE ORIENTATION SEMINAR</div>
-    <div class="attend-text">CERTIFICATE OF ATTENDANCE</div>
-  </div>
-</div>
+<div class="dept-text">DEPARTMENT OF LABOR AND EMPLOYMENT</div>
+<div class="seminar-text">PRE-DEPARTURE ORIENTATION SEMINAR</div>
+<div class="attend-text">CERTIFICATE OF ATTENDANCE</div>
 <div class="div-thick"></div>
 <div class="div-thin"></div>
-<table class="info-table">
-  <tr><td class="lbl">Name of OFW</td><td class="col">:</td><td class="val">' . $nameVal . '</td></tr>
-  <tr><td class="lbl">Skill / Occupation</td><td class="col">:</td><td class="val">' . $rankVal . '</td></tr>
-  <tr><td class="lbl">Country of Destination</td><td class="col">:</td><td class="val">WORLD WIDE</td></tr>
-  <tr><td class="lbl">Local Recruitment Agency</td><td class="col">:</td><td class="val">88 ACES MARITIME SERVICES INC.</td></tr>
-  <tr><td class="lbl">Foreign Principal</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
-  <tr><td class="lbl">Foreign Employer</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
-</table>
-<div class="certify">This certifies that the above named OFW has completed the prescribed requirements for the above program, held on <u>' . $dateVal . '</u> with Certificate No. <u>PDOS-' . $certNo . '</u>.</div>
-<table class="sigs-table"><tr>
-  <td><div class="sig-spacer"></div><div class="sig-name-line"><div class="sig-name">MR. JAY B. ALFARO</div><div class="sig-role">Accredited Trainor</div></div></td>
-  <td><img class="sig-img" src="' . $sig2 . '"><div class="sig-name-line"><div class="sig-name">CAPT. CRISANDO S. BLAS</div><div class="sig-role">President</div></div></td>
-</tr></table>
+
+<div class="body-area">
+  <img class="pdos-watermark" src="' . $pdosBg . '">
+  <div class="body-content">
+    <table class="info-table">
+      <tr><td class="lbl">Name of OFW</td><td class="col">:</td><td class="val">' . $nameVal . '</td></tr>
+      <tr><td class="lbl">Skill / Occupation</td><td class="col">:</td><td class="val">' . $rankVal . '</td></tr>
+      <tr><td class="lbl">Country of Destination</td><td class="col">:</td><td class="val">WORLD WIDE</td></tr>
+      <tr><td class="lbl">Local Recruitment Agency</td><td class="col">:</td><td class="val">88 ACES MARITIME SERVICES INC.</td></tr>
+      <tr><td class="lbl">Foreign Principal</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
+      <tr><td class="lbl">Foreign Employer</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
+    </table>
+    <div class="certify">This certifies that the above named OFW has completed the prescribed requirements for the above program, held on <u>' . $dateVal . '</u> with Certificate No. <u>PDOS-' . $certNo . '</u>.</div>
+    <table class="sigs-table"><tr>
+      <td><div class="sig-spacer"></div><div class="sig-name-line"><div class="sig-name">MR. JAY B. ALFARO</div><div class="sig-role">Accredited Trainor</div></div></td>
+      <td><img class="sig-img" src="' . $sig2 . '"><div class="sig-name-line"><div class="sig-name">CAPT. CRISANDO S. BLAS</div><div class="sig-role">President</div></div></td>
+    </tr></table>
+  </div>
+</div>
 </div></body></html>';
 
     return $html;
