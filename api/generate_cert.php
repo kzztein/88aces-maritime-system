@@ -183,15 +183,20 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .div-thick{border-top:3px solid #003087;margin:2mm 0 1mm;}
 .div-thin{border-top:1px solid #003087;margin:0 0 2mm;}
 /* watermark behind fields */
-.body-area{position:relative;}
-.pdos-watermark{
+.body-area{
+    position:relative;
+    background-image:url(' . $pdosBg . ');
+    background-repeat:no-repeat;
+    background-position:center center;
+    background-size:130mm auto;
+    -webkit-print-color-adjust:exact;
+}
+.body-area::before{
+    content:"";
     position:absolute;
-    top:50%; left:50%;
-    width:145mm;
-    opacity:0.25;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(255,255,255,0.75);
     z-index:0;
-    margin-left:-72.5mm;
-    margin-top:-40mm;
 }
 .body-content{position:relative;z-index:1;}
 .info-table{width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:2mm;}
@@ -217,7 +222,6 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 <div class="div-thin"></div>
 
 <div class="body-area">
-  <img class="pdos-watermark" src="' . $pdosBg . '">
   <div class="body-content">
     <table class="info-table">
       <tr><td class="lbl">Name of OFW</td><td class="col">:</td><td class="val">' . $nameVal . '</td></tr>
