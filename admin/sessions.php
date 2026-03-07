@@ -218,7 +218,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
         <input type="hidden" name="action" value="<?=$action==='create'?'create':'update'?>">
         <?php if($action==='edit'):?><input type="hidden" name="session_id" value="<?=$id?>"><?php endif;?>
 
-        <!-- Training Type Selector -->
         <div class="form-group" style="margin-bottom:20px">
           <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px">Training Type *</label>
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
@@ -272,7 +271,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
             <input type="text" name="company" value="<?=sanitize($session['company']??'88 ACES MARITIME SERVICES INC.')?>">
           </div>
 
-          <!-- PDOS ONLY: Principal field -->
           <div class="form-group full principal-field <?=($session['training_type']??'')==='pdos'?'show':''?>" id="principalField">
             <label style="color:#16a34a;font-weight:700">
               ✈️ Foreign Principal / Employer *
@@ -333,7 +331,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
       </div>
     </div>
 
-    <!-- Session info card -->
     <div class="card" style="margin-bottom:20px">
       <div class="card-body">
         <div class="form-grid">
@@ -358,7 +355,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
       </div>
     </div>
 
-    <!-- Attendees -->
     <div class="card">
       <div class="card-header">
         <h3>Attendees (<?=count($attendees)?>)</h3>
@@ -454,7 +450,6 @@ function selectType(type, color, title) {
   const t = document.getElementById('courseTitle');
   if (t) t.value = title || courseTitles[type] || '';
 
-  // Show/hide principal field for PDOS
   const pf = document.getElementById('principalField');
   const pi = document.getElementById('principalInput');
   if (pf) {
@@ -463,7 +458,6 @@ function selectType(type, color, title) {
   }
 }
 
-// Init on page load
 document.addEventListener('DOMContentLoaded', () => {
   const checked = document.querySelector('input[name="training_type"]:checked');
   if (checked) {
