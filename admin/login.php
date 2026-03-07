@@ -1,9 +1,9 @@
 <?php
-require_once '../Config.php';
+require_once '../config.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header('Location: Dashboard.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare("UPDATE admin_users SET last_login = NOW() WHERE id = ?")->execute([$admin['id']]);
             auditLog('LOGIN');
 
-            header('Location: Dashboard.php');
+            header('Location: dashboard.php');
             exit;
         } else {
             $error = 'Invalid username or password.';
