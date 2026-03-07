@@ -11,7 +11,7 @@ $openSessions   = $db->query("SELECT COUNT(*) FROM training_sessions WHERE statu
 $totalAttendees = $db->query("SELECT COUNT(*) FROM attendees")->fetchColumn();
 $totalCerts     = $db->query("SELECT COUNT(*) FROM certificates")->fetchColumn();
 
-// Recent sessions - FIXED QUERY
+// Recent sessions
 $recentSessions = $db->query(
     "SELECT ts.*, COUNT(a.id) as attendee_count, u.full_name as creator
      FROM training_sessions ts
