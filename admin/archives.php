@@ -178,17 +178,17 @@ $yearsActive    = $db->query("SELECT COUNT(DISTINCT YEAR(date_conducted)) FROM t
       <?php if ($totalPages > 1): ?>
       <div class="pagination">
         <?php if ($page > 1): ?>
-          <a href="?page=<?= $page-1 ?>&search=<?= urlencode($search) ?>&type=<?= $typeFilter ?>&year=<?= $yearFilter ?>">← Prev</a>
+          <a href="?page=<?= $page-1 ?>&search=<?= urlencode($search) ?>">← Prev</a>
         <?php endif; ?>
         <?php for ($p = max(1,$page-2); $p <= min($totalPages,$page+2); $p++): ?>
           <?php if ($p == $page): ?>
             <span class="active"><?= $p ?></span>
           <?php else: ?>
-            <a href="?page=<?= $p ?>&search=<?= urlencode($search) ?>&type=<?= $typeFilter ?>&year=<?= $yearFilter ?>"><?= $p ?></a>
+            <a href="?page=<?= $p ?>&search=<?= urlencode($search) ?>"><?= $p ?></a>
           <?php endif; ?>
         <?php endfor; ?>
         <?php if ($page < $totalPages): ?>
-          <a href="?page=<?= $page+1 ?>&search=<?= urlencode($search) ?>&type=<?= $typeFilter ?>&year=<?= $yearFilter ?>">Next →</a>
+          <a href="?page=<?= $page+1 ?>&search=<?= urlencode($search) ?>">Next →</a>
         <?php endif; ?>
       </div>
       <?php endif; ?>
