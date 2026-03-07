@@ -134,7 +134,7 @@ $actionColors = [
           </thead>
           <tbody>
           <?php if (empty($logs)): ?>
-            <tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">No logs found.</td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">No logs found.</td></tr>
           <?php else: ?>
           <?php foreach ($logs as $i => $log):
             $ac = $actionColors[$log['action']] ?? ['bg' => '#f3f4f6', 'color' => '#374151'];
@@ -151,8 +151,7 @@ $actionColors = [
                 </span>
               </td>
               <td style="font-size:12px;color:#6b7280"><?= sanitize($log['target_type'] ?? '') ?> <?= $log['target_id'] ? '#'.$log['target_id'] : '' ?></td>
-              <td><div class="log-detail" title="<?= sanitize($log["notes"] ?? '') ?>"><?= sanitize($log["notes"] ?? '—') ?></div></td>
-              <td style="font-size:11px;color:#9ca3af;font-family:monospace">—</td>
+              <td><div class="log-detail" title="<?= sanitize($log['notes'] ?? '') ?>"><?= sanitize($log['notes'] ?? '—') ?></div></td>
             </tr>
           <?php endforeach; ?>
           <?php endif; ?>
