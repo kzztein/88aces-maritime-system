@@ -1,9 +1,9 @@
 <?php
-require_once '../config.php';
+require_once '../Config.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header('Location: dashboard.php');
+    header('Location: Dashboard.php');
     exit;
 }
 
