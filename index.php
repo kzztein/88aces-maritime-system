@@ -1,8 +1,8 @@
 <?php
 require_once 'config.php';
 if (isLoggedIn()) {
-    header('Location: admin/Dashboard.php');
+    header('Location: admin/dashboard.php');
 } else {
-    header('Location: admin/Login.php');
+    header('Location: admin/login.php');
 }
 exit;
