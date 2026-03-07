@@ -1,15 +1,15 @@
 <?php
 // ============================================================
-// config.php — Database & App Configuration
+// config.php — Database & App Configuration (PRODUCTION)
 // ============================================================
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');          // Change to your DB user
-define('DB_PASS', '');              // Change to your DB password
-define('DB_NAME', '88_aces');
+define('DB_HOST', '127.0.0.1');
+define('DB_USER', 'u604181547_maritimeadmin');
+define('DB_PASS', 'Aces@Maritime#2026!');
+define('DB_NAME', 'u604181547_maritimedb');
 
 define('APP_NAME', '88 Aces Maritime Training System');
-define('APP_URL',  'http://localhost/88%20aces');  // Change to your domain
+define('APP_URL',  'https://goldenrod-finch-410796.hostingersite.com');
 define('CERT_PREFIX', 'APAT');     // Certificate number prefix
 
 // Paths (relative to project root)
@@ -23,9 +23,9 @@ ini_set('session.cookie_httponly', 1);
 ini_set('session.use_strict_mode', 1);
 session_start();
 
-// Error reporting (set to 0 in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Error reporting (disabled for production)
+error_reporting(0);
+ini_set('display_errors', 0);
 
 // ============================================================
 // Database Connection (PDO)
@@ -57,7 +57,7 @@ function isLoggedIn(): bool {
 
 function requireLogin(): void {
     if (!isLoggedIn()) {
-        header('Location: ' . APP_URL . '/admin/login.php');
+        header('Location: ' . APP_URL . '/admin/Login.php');
         exit;
     }
 }
