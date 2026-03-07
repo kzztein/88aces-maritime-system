@@ -2,10 +2,11 @@
 // ============================================================
 // config.php — Database & App Configuration
 // ============================================================
-define('DB_HOST', 'localhost');
-define('DB_USER', 'u6O4181547_88acesuser');
-define('DB_PASS', 'Aces@2026!');
-define('DB_NAME', 'u6O4181547_88aces');
+define('DB_HOST', '127.0.0.1');
+define('DB_USER', 'u604181547_maritimeadmin');
+define('DB_PASS', 'Aces@Maritime#2026!');
+define('DB_NAME', 'u604181547_maritimedb');
+
 
 define('APP_NAME', '88 Aces Maritime Training System');
 define('APP_URL',  'https://green-albatross-648026.hostingersite.com');
