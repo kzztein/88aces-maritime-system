@@ -2,13 +2,14 @@
 // ============================================================
 // config.php — Database & App Configuration
 // ============================================================
-define('DB_HOST', 'localhost');
-define('DB_USER', 'u6O4181547_88acesuser');
-define('DB_PASS', 'Aces@2026!');
-define('DB_NAME', 'u6O4181547_88aces');
+define('DB_HOST', '127.0.0.1');
+define('DB_USER', 'u604181547_maritimeadmin');
+define('DB_PASS', 'Aces2026Maritime!');
+define('DB_NAME', 'u604181547_maritimedb');
+
 
 define('APP_NAME', '88 Aces Maritime Training System');
-define('APP_URL',  'https://green-albatross-648026.hostingersite.com');
+define('APP_URL', 'https://goldenrod-finch-410796.hostingersite.com');
 define('CERT_PREFIX', 'APAT');
 
 // Paths (relative to project root)
@@ -55,7 +56,7 @@ function isLoggedIn(): bool {
 }
 function requireLogin(): void {
     if (!isLoggedIn()) {
-        header('Location: ' . APP_URL . '/admin/login.php');
+        header('Location: ' . APP_URL . '/admin/Login.php');
         exit;
     }
 }
