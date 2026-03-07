@@ -1,5 +1,5 @@
 <?php
-require_once 'Config.php';
+require_once 'config.php';
 if (isLoggedIn()) {
     header('Location: admin/Dashboard.php');
 } else {
