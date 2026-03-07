@@ -5,6 +5,9 @@
  * Uses mPDF (install via: composer require mpdf/mpdf)
  * Falls back to basic HTML if mPDF not available.
  */
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once '../config.php';
 if (!isLoggedIn()) { header('Location: ../admin/login.php'); exit; };
 
