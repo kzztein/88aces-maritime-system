@@ -6,7 +6,7 @@
  * Falls back to basic HTML if mPDF not available.
  */
 require_once '../config.php';
-requireLogin();
+if (!isLoggedIn()) { header('Location: ../admin/login.php'); exit; };
 
 $type = $_GET['type'] ?? '';
 $id   = (int)($_GET['id'] ?? 0);
