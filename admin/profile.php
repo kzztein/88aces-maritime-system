@@ -208,8 +208,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
     font-size: 12px; font-weight: 600;
     text-transform: uppercase; letter-spacing: .05em;
   }
-
-  /* Tabs */
   .profile-tabs {
     display: flex; gap: 4px;
     background: #f3f4f6; border-radius: 10px;
@@ -228,8 +226,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
     font-weight: 600;
     box-shadow: 0 1px 4px rgba(0,0,0,.1);
   }
-
-  /* Password strength */
   .strength-bar {
     height: 4px; border-radius: 2px;
     background: #e5e7eb; margin-top: 6px;
@@ -241,20 +237,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
     width: 0;
   }
   .strength-text { font-size: 11px; margin-top: 4px; }
-
-  /* Code input */
-  .code-input {
-    display: flex; gap: 8px; justify-content: center;
-    margin: 16px 0;
-  }
-  .code-input input {
-    width: 48px; height: 56px;
-    text-align: center; font-size: 22px; font-weight: 700;
-    border: 2px solid #e5e7eb; border-radius: 8px;
-    outline: none; font-family: inherit;
-  }
-  .code-input input:focus { border-color: #1a4a8a; }
-
   .send-code-btn {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 20px; border-radius: 8px;
@@ -265,16 +247,14 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
   }
   .send-code-btn:hover { opacity: .9; }
   .send-code-btn:disabled { opacity: .5; cursor: not-allowed; }
-
   .info-box {
     background: #dbeafe; border: 1px solid #93c5fd;
     border-radius: 8px; padding: 12px 16px;
     font-size: 13px; color: #1e40af;
     margin-bottom: 20px;
   }
-  .last-login {
-    font-size: 12px; opacity: .7; margin-top: 6px;
-  }
+  .last-login { font-size: 12px; opacity: .7; margin-top: 6px; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -325,8 +305,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
         <div class="card-body">
           <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="action" value="update_profile">
-
-            <!-- Photo upload -->
             <div style="text-align:center;margin-bottom:28px">
               <div class="avatar" style="width:100px;height:100px;font-size:36px;margin:0 auto 12px;border:3px solid #e5e7eb;background:#e8f0fb;color:#1a4a8a">
                 <?php if ($profilePhoto && file_exists($profilePhoto)): ?>
@@ -342,7 +320,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
               </label>
               <p style="font-size:11px;color:#9ca3af;margin-top:6px">JPG, PNG, GIF, WEBP — max 2MB</p>
             </div>
-
             <div class="form-grid">
               <div class="form-group full">
                 <label>Full Name *</label>
@@ -370,12 +347,9 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
       <div class="card">
         <div class="card-header"><h3>Change Password</h3></div>
         <div class="card-body">
-
           <div class="info-box">
             📧 A 6-digit verification code will be sent to <strong><?= sanitize($admin['email']) ?></strong> before you can change your password.
           </div>
-
-          <!-- Step 1: Request code -->
           <div style="margin-bottom:24px">
             <p style="font-size:14px;font-weight:600;color:#374151;margin-bottom:10px">Step 1 — Request Verification Code</p>
             <form method="POST">
@@ -385,10 +359,7 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
               </button>
             </form>
           </div>
-
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">
-
-          <!-- Step 2: Enter code and new password -->
           <p style="font-size:14px;font-weight:600;color:#374151;margin-bottom:16px">Step 2 — Enter Code & New Password</p>
           <form method="POST">
             <input type="hidden" name="action" value="change_password">
@@ -427,10 +398,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
   </div>
 </main>
 
-<style>
-  .hidden { display: none !important; }
-</style>
-
 <script>
 function switchTab(tab) {
   document.getElementById('tab-profile').classList.toggle('hidden', tab !== 'profile');
@@ -463,7 +430,6 @@ function checkStrength(password) {
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
-
   const levels = [
     { w: '20%',  c: '#ef4444', t: 'Very Weak' },
     { w: '40%',  c: '#f97316', t: 'Weak' },
