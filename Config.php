@@ -9,7 +9,7 @@ define('DB_NAME', 'u604181547_maritimedb');
 
 
 define('APP_NAME', '88 Aces Maritime Training System');
-define('APP_URL',  'https://green-albatross-648026.hostingersite.com');
+define('APP_URL', 'https://goldenrod-finch-410796.hostingersite.com');
 define('CERT_PREFIX', 'APAT');
 
 // Paths (relative to project root)
