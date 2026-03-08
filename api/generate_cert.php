@@ -9,7 +9,7 @@ $stmt = $db->prepare("
     SELECT a.*,
            ts.course_title, ts.training_type, ts.date_conducted,
            ts.facilitator, ts.company, ts.session_code,
-           ts.location, ts.principal,
+           ts.location, ts.principal, ts.cert_validity_years,
            c.cert_number
     FROM attendees a
     JOIN training_sessions ts ON ts.id = a.session_id
@@ -75,7 +75,7 @@ switch ($type) {
         $wmark   = $imgDir . 'pdos_image2.png';
         break;
     case 'secat':
-        $html  = buildSECAT($fullName, $fullDate, $facilitator, $certSuffix, $imgDir);
+        $html  = buildSECAT($fullName, $fullDate, $facilitator, $certSuffix, $imgDir, (int)($row['cert_validity_years'] ?? 2), $row['date_conducted']);
         $fn    = 'SECAT_' . $surname . '_' . $firstName . '.pdf';
         $wmark = '';
         break;
@@ -232,7 +232,96 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 // ============================================================
 // SECAT — fixed layout matching original template
 // ============================================================
-function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d) {
+function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d, $validityYears = 2, $dateConducted = '') {
+    $border   = b64img($d . 'secat_image1.png');
+    $logo88   = b64img($d . 'secat_image2.png');
+    $secat    = b64img($d . 'secat_image3.jpeg');
+    $optimumS = b64img($d . 'secat_image4.jpeg');
+    $optimumM = b64img($d . 'secat_image5.png');
+    $optra    = b64img($d . 'secat_image6.png');
+
+    $nameVal  = esc($fullName);
+    $certNo   = esc($cert);
+    $facVal   = esc($facilitator);
+    $dateVal  = esc($fullDate);
+
+    // Compute valid until
+    $validUntil = '';
+    if ($dateConducted) {
+        $expiry     = new DateTime($dateConducted);
+        $expiry->modify("+{$validityYears} years");
+        $validUntil = $expiry->format('F d, Y');
+    }
+
+    $borderStyle = $border ? 'background-image:url("' . $border . '");background-size:100% 100%;background-repeat:no-repeat;' : '';
+
+    $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Georgia,serif;background:#fff;' . $borderStyle . '}
+.page{width:210mm;min-height:297mm;padding:20mm 22mm 14mm;}
+.certno-row{text-align:right;font-size:9pt;color:#333;margin-bottom:4mm;}
+.logo-row{text-align:center;margin-bottom:4mm;}
+.logo-row img{height:18mm;}
+.title{text-align:center;font-size:19pt;font-weight:normal;color:#111;margin-bottom:4mm;}
+.granted{text-align:center;font-size:10.5pt;color:#333;margin-bottom:3mm;}
+.name-wrap{text-align:center;margin:0 8mm 4mm;}
+.name-text{display:inline-block;font-size:19pt;font-weight:bold;color:#111;border-bottom:2px solid #111;padding:0 6mm 2mm;letter-spacing:0.5px;}
+.body-p{text-align:center;font-size:10pt;color:#333;line-height:1.7;margin-bottom:2mm;}
+.training-type{text-align:center;font-size:12pt;font-weight:bold;color:#111;text-transform:uppercase;margin:2mm 0 3mm;}
+.secat-logo{text-align:center;margin:3mm 0 4mm;}
+.secat-logo img{height:17mm;}
+.sigs-table{width:100%;border-collapse:collapse;margin-top:6mm;}
+.sigs-table td{width:50%;text-align:center;vertical-align:bottom;padding:0 10mm;}
+.sig-space{height:12mm;}
+.sig-line{border-top:1.5px solid #111;padding-top:3mm;}
+.sig-label{font-size:8.5pt;color:#555;margin-bottom:1mm;}
+.sig-val{font-size:9.5pt;font-weight:bold;}
+.sig-sub{font-size:8pt;color:#555;margin-top:1mm;}
+.logos-bot{text-align:center;margin-top:6mm;}
+.logos-bot img{height:10mm;margin:0 3mm;vertical-align:middle;}
+.footer{text-align:center;font-size:7pt;color:#666;margin-top:4mm;line-height:1.6;}
+.footer strong{color:#1a237e;}
+</style></head><body>
+<div class="page">
+  <div class="certno-row">Certificate No.: <strong>' . $certNo . '</strong></div>
+  <div class="logo-row"><img src="' . $logo88 . '"></div>
+  <div class="title">Certificate of Training Completion</div>
+  <div class="granted">is hereby granted to</div>
+  <div class="name-wrap"><span class="name-text">' . $nameVal . '</span></div>
+  <div class="body-p">to certify his/her successful completion of the</div>
+  <div class="training-type">Ship Emergency Care Attendant Training</div>
+  <div class="secat-logo"><img src="' . $secat . '"></div>
+  <table class="sigs-table"><tr>
+    <td>
+      <div class="sig-space"></div>
+      <div class="sig-line">
+        <div class="sig-label">Facilitator</div>
+        <div class="sig-val">' . $facVal . '</div>
+      </div>
+    </td>
+    <td>
+      <div class="sig-space"></div>
+      <div class="sig-line">
+        <div class="sig-label">Training Date</div>
+        <div class="sig-val">' . $dateVal . '</div>
+        ' . ($validUntil ? '<div class="sig-sub">VALID UNTIL: ' . esc($validUntil) . '</div>' : '') . '
+      </div>
+    </td>
+  </tr></table>
+  <div class="logos-bot">
+    <img src="' . $optimumS . '">
+    <img src="' . $optra . '">
+    <img src="' . $optimumM . '">
+  </div>
+  <div class="footer">
+    <strong>QD-TRA-04 Rev 0 30 November 2022</strong><br>
+    *for certificate verification please send an email to: manila.training@shipmanning.net*
+  </div>
+</div>
+</body></html>';
+
+    return $html;
+}
     $border   = b64img($d . 'secat_image1.png');
     $logo88   = b64img($d . 'secat_image2.png');
     $secat    = b64img($d . 'secat_image3.jpeg');
