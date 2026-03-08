@@ -5,11 +5,8 @@
  * Uses mPDF (install via: composer require mpdf/mpdf)
  * Falls back to basic HTML if mPDF not available.
  */
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 require_once '../config.php';
-if (!isLoggedIn()) { header('Location: ../admin/login.php'); exit; };
+if (!isLoggedIn()) { header('Location: ../admin/login.php'); exit; }
 
 $type = $_GET['type'] ?? '';
 $id   = (int)($_GET['id'] ?? 0);
@@ -34,7 +31,7 @@ function generateAttendancePDF(int $sessionId, PDO $db): void {
     $attendees = $stmt->fetchAll();
 
     $html = buildAttendanceHTML($session, $attendees);
-    outputPDF($html, 'Attendance_' . $session['session_code'] . '.pdf', 'L'); // Landscape
+    outputPDF($html, 'Attendance_' . $session['session_code'] . '.pdf', 'L');
 }
 
 // ── CERTIFICATE PDF ──────────────────────────────────────────
@@ -79,16 +76,15 @@ function outputPDF(string $html, string $filename, string $orientation = 'P'): v
     if (file_exists($mpdfPath)) {
         require_once __DIR__ . '/../vendor/autoload.php';
         $mpdf = new \Mpdf\Mpdf([
-            'orientation' => $orientation,
-            'margin_top'  => 10,
+            'orientation'  => $orientation,
+            'margin_top'   => 10,
             'margin_bottom'=> 10,
-            'margin_left' => 10,
-            'margin_right'=> 10,
+            'margin_left'  => 10,
+            'margin_right' => 10,
         ]);
         $mpdf->WriteHTML($html);
         $mpdf->Output($filename, 'D');
     } else {
-        // Fallback: serve as printable HTML
         header('Content-Type: text/html; charset=utf-8');
         echo $html . '<script>window.onload=function(){window.print()}</script>';
     }
@@ -97,10 +93,10 @@ function outputPDF(string $html, string $filename, string $orientation = 'P'): v
 
 // ── HTML BUILDERS ────────────────────────────────────────────
 function buildAttendanceHTML(array $session, array $attendees): string {
-    $date       = date('F d, Y', strtotime($session['date_conducted']));
-    $time       = date('h:i A', strtotime($session['time_start'])) . ' - ' . date('h:i A', strtotime($session['time_end']));
-    $rows       = '';
-    $maxRows    = max(20, count($attendees));
+    $date    = date('F d, Y', strtotime($session['date_conducted']));
+    $time    = date('h:i A', strtotime($session['time_start'])) . ' - ' . date('h:i A', strtotime($session['time_end']));
+    $rows    = '';
+    $maxRows = max(20, count($attendees));
 
     for ($i = 0; $i < $maxRows; $i++) {
         $a = $attendees[$i] ?? null;
@@ -108,7 +104,7 @@ function buildAttendanceHTML(array $session, array $attendees): string {
             <td style="text-align:center">' . ($i + 1) . '</td>
             <td>' . htmlspecialchars($a['surname']       ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['given_name']    ?? '', ENT_QUOTES) . '</td>
-         <td>' . htmlspecialchars($a['middle_initial'] ?? '', ENT_QUOTES) . '</td>
+            <td>' . htmlspecialchars($a['middle_initial'] ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['rank']          ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['vessel']        ?? '', ENT_QUOTES) . '</td>
             <td></td>
@@ -121,7 +117,6 @@ function buildAttendanceHTML(array $session, array $attendees): string {
     <style>
       body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; }
       .header { text-align: center; margin-bottom: 10px; }
-      .header img { max-height: 60px; }
       .header h2 { font-size: 13px; margin: 4px 0; text-transform: uppercase; }
       .info-table { width: 100%; margin-bottom: 8px; font-size: 10px; }
       .info-table td { padding: 2px 6px; }
@@ -130,9 +125,6 @@ function buildAttendanceHTML(array $session, array $attendees): string {
       table.main th, table.main td { border: 1px solid #333; padding: 4px 6px; }
       table.main th { background: #1a4a8a; color: #fff; text-align: center; font-size: 9px; }
       table.main td { min-height: 18px; height: 18px; }
-      .sig-section { margin-top: 16px; display: flex; justify-content: space-between; }
-      .sig-box { text-align: center; width: 200px; }
-      .sig-line { border-top: 1px solid #333; margin-top: 40px; padding-top: 4px; font-size: 9px; }
     </style></head><body>
     <div class="header">
       <h2>88 Aces Maritime Services Inc.</h2>
@@ -165,20 +157,30 @@ function buildAttendanceHTML(array $session, array $attendees): string {
       </thead>
       <tbody>' . $rows . '</tbody>
     </table>
-    <div class="sig-section">
-      <div class="sig-box"><div class="sig-line">Facilitator: ' . htmlspecialchars($session['facilitator'], ENT_QUOTES) . '</div></div>
-      <div class="sig-box"><div class="sig-line">Date: ' . $date . '</div></div>
-    </div>
+    <table style="width:100%;margin-top:30px;border-collapse:collapse">
+      <tr>
+        <td style="width:50%;padding-right:40px;vertical-align:bottom">
+          <div style="border-top:1px solid #333;padding-top:4px;font-size:9px">
+            Facilitator: ' . htmlspecialchars($session['facilitator'], ENT_QUOTES) . '
+          </div>
+        </td>
+        <td style="width:50%;padding-left:40px;vertical-align:bottom">
+          <div style="border-top:1px solid #333;padding-top:4px;font-size:9px">
+            Date: ' . $date . '
+          </div>
+        </td>
+      </tr>
+    </table>
     </body></html>';
 }
 
 function buildCertificateHTML(array $data): string {
-    $fullName   = strtoupper($data['given_name'] . ' ' . $data['middle_initial'] . '. ' . $data['surname']);
-    $date       = date('F d, Y', strtotime($data['date_conducted']));
-    $day        = date('j', strtotime($data['date_conducted']));
-    $month      = date('F', strtotime($data['date_conducted']));
-    $year       = date('Y', strtotime($data['date_conducted']));
-    $certNo     = $data['cert_no'] ?? 'PENDING';
+    $fullName = strtoupper($data['given_name'] . ' ' . $data['middle_initial'] . ' ' . $data['surname']);
+    $date     = date('F d, Y', strtotime($data['date_conducted']));
+    $day      = date('j', strtotime($data['date_conducted']));
+    $month    = date('F', strtotime($data['date_conducted']));
+    $year     = date('Y', strtotime($data['date_conducted']));
+    $certNo   = $data['cert_no'] ?? 'PENDING';
 
     return '<!DOCTYPE html><html><head><meta charset="UTF-8">
     <style>
@@ -186,7 +188,6 @@ function buildCertificateHTML(array $data): string {
       body { font-family: "Times New Roman", serif; margin: 0; padding: 40px 60px; background: #fff; }
       .cert-container { border: 8px double #1a4a8a; padding: 40px; min-height: 550px; text-align: center; }
       .cert-header { font-size: 12px; color: #555; margin-bottom: 8px; }
-      .cert-org { font-size: 20px; font-weight: bold; color: #0f2c5c; letter-spacing: 2px; text-transform: uppercase; }
       .cert-number { font-size: 11px; color: #888; margin: 4px 0 20px; }
       .cert-title  { font-size: 36px; font-weight: bold; color: #1a4a8a; margin: 12px 0; letter-spacing: 3px; }
       .cert-body   { font-size: 14px; color: #333; margin: 12px 0; line-height: 1.8; }
@@ -213,29 +214,31 @@ function buildCertificateHTML(array $data): string {
         pursuant to POEA Governing Board Resolution No.4 and Memorandum Circular No.14, both series of 2009.
       </div>
       <div class="cert-details" style="margin-top:16px">Given this ' . $day . 'th day of ' . $month . ' ' . $year . ', at Manila City, Philippines.</div>
-      <div class="signatures">
-        <div class="sig-item">
-          <div class="sig-name">JAY B. ALFARO</div>
-          <div class="sig-role">Accredited Trainor</div>
-        </div>
-        <div class="sig-item">
-          <div class="sig-name">CAPT. CRISANDO S. BLAS</div>
-          <div class="sig-role">President</div>
-        </div>
-      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:48px">
+        <tr>
+          <td style="width:50%;text-align:center;vertical-align:bottom">
+            <div style="border-top:1px solid #333;padding-top:6px;font-weight:bold;font-size:13px">JAY B. ALFARO</div>
+            <div style="font-size:11px;color:#666">Accredited Trainor</div>
+          </td>
+          <td style="width:50%;text-align:center;vertical-align:bottom">
+            <div style="border-top:1px solid #333;padding-top:6px;font-weight:bold;font-size:13px">CAPT. CRISANDO S. BLAS</div>
+            <div style="font-size:11px;color:#666">President</div>
+          </td>
+        </tr>
+      </table>
     </div>
     </body></html>';
 }
 
 function buildReportHTML(array $session, array $attendees): string {
-    $month  = date('F Y', strtotime($session['date_conducted']));
-    $rows   = '';
+    $month = date('F Y', strtotime($session['date_conducted']));
+    $rows  = '';
     foreach ($attendees as $i => $a) {
         $rows .= '<tr>
             <td style="text-align:center">' . ($i+1) . '</td>
             <td>' . htmlspecialchars($a['cert_no'] ?? '-', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['rank'], ENT_QUOTES) . '</td>
-            <td>' . htmlspecialchars($a['surname'] . ', ' . $a['given_name'] . ', ' . $a['middle_initial'], ENT_QUOTES) . '</td>
+            <td>' . htmlspecialchars($a['surname'] . ', ' . $a['given_name'] . ' ' . $a['middle_initial'], ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['crew_type'], ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['vessel'], ENT_QUOTES) . '</td>
             <td>' . date('M d, Y', strtotime($session['date_conducted'])) . '</td>
