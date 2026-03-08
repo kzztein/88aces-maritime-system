@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $facilitator   = trim($_POST['facilitator']   ?? '');
         $company       = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
         $principal     = trim($_POST['principal']     ?? '');
+        $sessionCode   = strtoupper(trim($_POST['session_code'] ?? ''));
 
         if (!$courseTitle || !$dateConducted || !$location || !$facilitator) {
             $error = 'Please fill in all required fields.';
@@ -37,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             if ($postAction === 'create') {
                 $token = generateToken(16);
-                $code  = generateSessionCode();
+                $code  = $sessionCode ?: generateSessionCode();
                 $db->prepare(
                     "INSERT INTO training_sessions
                      (session_code,course_title,training_type,date_conducted,time_start,time_end,
@@ -50,10 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: sessions.php?action=view&id=$newId&msg=Session+created!");
                 exit;
             } else {
+                $updateCode = $sessionCode ?: $session['session_code'];
                 $db->prepare(
-                    "UPDATE training_sessions SET course_title=?,training_type=?,date_conducted=?,
+                    "UPDATE training_sessions SET session_code=?,course_title=?,training_type=?,date_conducted=?,
                      time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=? WHERE id=?"
-                )->execute([$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
+                )->execute([$updateCode,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
                              $location,$facilitator,$company,$principal,$id]);
                 auditLog('UPDATE_SESSION','session',$id);
                 $msg = 'Session updated.';
@@ -243,6 +245,18 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
             <label>Course Title *</label>
             <input type="text" name="course_title" id="courseTitle"
                    value="<?=sanitize($session['course_title']??'ANTI-PIRACY AWARENESS TRAINING')?>" required>
+          </div>
+          <div class="form-group">
+            <label>Session Code <?=$action==='create'?'<span style="font-size:11px;color:#9ca3af">(leave blank to auto-generate)</span>':''?></label>
+            <input type="text" name="session_code"
+                   value="<?=sanitize($session['session_code']??'')?>"
+                   placeholder="<?=$action==='create'?'Auto: TRN-'.date('Y').'-XXXX':''?>"
+                   style="font-family:monospace">
+            <?php if($action==='edit'):?>
+            <p style="font-size:11px;color:#6b7280;margin-top:4px">
+              ⚠️ Changing this will update the next auto-generated code to continue from here.
+            </p>
+            <?php endif;?>
           </div>
           <div class="form-group">
             <label>Date Conducted *</label>
