@@ -157,18 +157,10 @@ function buildAttendanceHTML(array $session, array $attendees): string {
       </thead>
       <tbody>' . $rows . '</tbody>
     </table>
-    <table style="width:100%;margin-top:30px;border-collapse:collapse">
+    <table style="width:50%;margin-top:8px;border-collapse:collapse;border:1px solid #333">
       <tr>
-        <td style="width:50%;padding-right:40px;vertical-align:bottom">
-          <div style="border-top:1px solid #333;padding-top:4px;font-size:9px">
-            Facilitator: ' . htmlspecialchars($session['facilitator'], ENT_QUOTES) . '
-          </div>
-        </td>
-        <td style="width:50%;padding-left:40px;vertical-align:bottom">
-          <div style="border-top:1px solid #333;padding-top:4px;font-size:9px">
-            Date: ' . $date . '
-          </div>
-        </td>
+        <td style="padding:6px 10px;font-size:9px;font-weight:bold;border-right:1px solid #333;width:50%">Facilitator: ' . htmlspecialchars($session['facilitator'], ENT_QUOTES) . '</td>
+        <td style="padding:6px 10px;font-size:9px;font-weight:bold;width:50%">Signature:</td>
       </tr>
     </table>
     </body></html>';
