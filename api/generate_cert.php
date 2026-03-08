@@ -258,28 +258,28 @@ function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d, $validityYear
     $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:Georgia,serif;background:#fff;' . $borderStyle . '}
-.page{width:210mm;min-height:297mm;padding:20mm 22mm 14mm;}
-.certno-row{text-align:right;font-size:9pt;color:#333;margin-bottom:4mm;}
-.logo-row{text-align:center;margin-bottom:4mm;}
-.logo-row img{height:18mm;}
-.title{text-align:center;font-size:19pt;font-weight:normal;color:#111;margin-bottom:4mm;}
-.granted{text-align:center;font-size:10.5pt;color:#333;margin-bottom:3mm;}
-.name-wrap{text-align:center;margin:0 8mm 4mm;}
-.name-text{display:inline-block;font-size:19pt;font-weight:bold;color:#111;border-bottom:2px solid #111;padding:0 6mm 2mm;letter-spacing:0.5px;}
-.body-p{text-align:center;font-size:10pt;color:#333;line-height:1.7;margin-bottom:2mm;}
-.training-type{text-align:center;font-size:12pt;font-weight:bold;color:#111;text-transform:uppercase;margin:2mm 0 3mm;}
-.secat-logo{text-align:center;margin:3mm 0 4mm;}
-.secat-logo img{height:17mm;}
-.sigs-table{width:100%;border-collapse:collapse;margin-top:6mm;}
+.page{width:210mm;min-height:297mm;padding:18mm 20mm 10mm;}
+.certno-row{text-align:right;font-size:8.5pt;color:#333;margin-bottom:3mm;}
+.logo-row{text-align:center;margin-bottom:3mm;}
+.logo-row img{height:16mm;}
+.title{text-align:center;font-size:17pt;font-weight:normal;color:#111;margin-bottom:3mm;}
+.granted{text-align:center;font-size:10pt;color:#333;margin-bottom:2mm;}
+.name-wrap{text-align:center;margin:0 8mm 3mm;}
+.name-text{display:inline-block;font-size:17pt;font-weight:bold;color:#111;border-bottom:2px solid #111;padding:0 6mm 1.5mm;letter-spacing:0.5px;}
+.body-p{text-align:center;font-size:9.5pt;color:#333;line-height:1.6;margin-bottom:2mm;}
+.training-type{text-align:center;font-size:11pt;font-weight:bold;color:#111;text-transform:uppercase;margin:2mm 0 2mm;}
+.secat-logo{text-align:center;margin:2mm 0 3mm;}
+.secat-logo img{height:14mm;}
+.sigs-table{width:100%;border-collapse:collapse;margin-top:4mm;}
 .sigs-table td{width:50%;text-align:center;vertical-align:bottom;padding:0 10mm;}
-.sig-space{height:12mm;}
-.sig-line{border-top:1.5px solid #111;padding-top:3mm;}
-.sig-label{font-size:8.5pt;color:#555;margin-bottom:1mm;}
-.sig-val{font-size:9.5pt;font-weight:bold;}
-.sig-sub{font-size:8pt;color:#555;margin-top:1mm;}
-.logos-bot{text-align:center;margin-top:6mm;}
-.logos-bot img{height:10mm;margin:0 3mm;vertical-align:middle;}
-.footer{text-align:center;font-size:7pt;color:#666;margin-top:4mm;line-height:1.6;}
+.sig-space{height:10mm;}
+.sig-line{border-top:1.5px solid #111;padding-top:2mm;}
+.sig-label{font-size:8pt;color:#555;margin-bottom:1mm;}
+.sig-val{font-size:9pt;font-weight:bold;}
+.sig-sub{font-size:7.5pt;color:#555;margin-top:1mm;}
+.logos-bot{text-align:center;margin-top:5mm;}
+.logos-bot img{height:9mm;margin:0 3mm;vertical-align:middle;display:inline-block;}
+.footer{text-align:center;font-size:6.5pt;color:#666;margin-top:3mm;line-height:1.5;}
 .footer strong{color:#1a237e;}
 </style></head><body>
 <div class="page">
@@ -309,9 +309,7 @@ body{font-family:Georgia,serif;background:#fff;' . $borderStyle . '}
     </td>
   </tr></table>
   <div class="logos-bot">
-    <img src="' . $optimumS . '">
-    <img src="' . $optra . '">
-    <img src="' . $optimumM . '">
+    <img src="' . $optimumS . '"><img src="' . $optra . '"><img src="' . $optimumM . '">
   </div>
   <div class="footer">
     <strong>QD-TRA-04 Rev 0 30 November 2022</strong><br>
