@@ -20,16 +20,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = $_POST['action'] ?? '';
 
     if ($postAction === 'create' || $postAction === 'update') {
-        $courseTitle   = trim($_POST['course_title']  ?? '');
-        $trainingType  = $_POST['training_type']      ?? 'anti_piracy';
-        $dateConducted = $_POST['date_conducted']     ?? '';
-        $timeStart     = $_POST['time_start']         ?? '';
-        $timeEnd       = $_POST['time_end']           ?? '';
-        $location      = trim($_POST['location']      ?? '');
-        $facilitator   = trim($_POST['facilitator']   ?? '');
-        $company       = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
-        $principal     = trim($_POST['principal']     ?? '');
-        $sessionCode   = strtoupper(trim($_POST['session_code'] ?? ''));
+        $courseTitle       = trim($_POST['course_title']  ?? '');
+        $trainingType      = $_POST['training_type']      ?? 'anti_piracy';
+        $dateConducted     = $_POST['date_conducted']     ?? '';
+        $timeStart         = $_POST['time_start']         ?? '';
+        $timeEnd           = $_POST['time_end']           ?? '';
+        $location          = trim($_POST['location']      ?? '');
+        $facilitator       = trim($_POST['facilitator']   ?? '');
+        $company           = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
+        $principal         = trim($_POST['principal']     ?? '');
+        $sessionCode       = strtoupper(trim($_POST['session_code'] ?? ''));
+        $certValidityYears = ($trainingType === 'secat') ? (int)($_POST['cert_validity_years'] ?? 2) : null;
 
         if (!$courseTitle || !$dateConducted || !$location || !$facilitator) {
             $error = 'Please fill in all required fields.';
@@ -42,10 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->prepare(
                     "INSERT INTO training_sessions
                      (session_code,course_title,training_type,date_conducted,time_start,time_end,
-                      location,facilitator,company,principal,qr_token,created_by)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+                      location,facilitator,company,principal,qr_token,created_by,cert_validity_years)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
                 )->execute([$code,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
-                             $location,$facilitator,$company,$principal,$token,$admin['id']]);
+                             $location,$facilitator,$company,$principal,$token,$admin['id'],$certValidityYears]);
                 $newId = $db->lastInsertId();
                 auditLog('CREATE_SESSION','session',$newId,"Code: $code");
                 header("Location: sessions.php?action=view&id=$newId&msg=Session+created!");
@@ -54,9 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $updateCode = $sessionCode ?: $session['session_code'];
                 $db->prepare(
                     "UPDATE training_sessions SET session_code=?,course_title=?,training_type=?,date_conducted=?,
-                     time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=? WHERE id=?"
+                     time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=?,cert_validity_years=? WHERE id=?"
                 )->execute([$updateCode,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
-                             $location,$facilitator,$company,$principal,$id]);
+                             $location,$facilitator,$company,$principal,$certValidityYears,$id]);
                 auditLog('UPDATE_SESSION','session',$id);
                 $msg = 'Session updated.';
             }
@@ -297,6 +298,22 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
               This will fill in both "Foreign Principal" and "Foreign Employer" fields on the PDOS certificate.
             </p>
           </div>
+
+          <div class="form-group full principal-field <?=($session['training_type']??'')==='secat'?'show':''?>" id="secatField">
+            <label style="color:#d97706;font-weight:700">
+              🚑 Certificate Validity *
+              <span style="font-size:11px;font-weight:400;color:#6b7280">(SECAT — how long the certificate is valid)</span>
+            </label>
+            <div style="display:flex;gap:12px;margin-top:6px">
+              <?php foreach([1,2,3] as $yr):
+                $sel = ($session['cert_validity_years'] ?? 2) == $yr; ?>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:2px solid <?=$sel?'#d97706':'#e5e7eb'?>;border-radius:8px;background:<?=$sel?'#fef3c7':'#fff'?>">
+                <input type="radio" name="cert_validity_years" value="<?=$yr?>" <?=$sel?'checked':''?> style="accent-color:#d97706">
+                <span style="font-weight:600"><?=$yr?> Year<?=$yr>1?'s':''?></span>
+              </label>
+              <?php endforeach;?>
+            </div>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -470,6 +487,9 @@ function selectType(type, color, title) {
     pf.classList.toggle('show', type === 'pdos');
     if (pi) pi.required = type === 'pdos';
   }
+
+  const sf = document.getElementById('secatField');
+  if (sf) sf.classList.toggle('show', type === 'secat');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -479,6 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pi = document.getElementById('principalInput');
     if (pf) pf.classList.toggle('show', checked.value === 'pdos');
     if (pi) pi.required = checked.value === 'pdos';
+    const sf = document.getElementById('secatField');
+    if (sf) sf.classList.toggle('show', checked.value === 'secat');
   }
 });
 
