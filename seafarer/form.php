@@ -24,17 +24,17 @@ $successMsg = '';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $surname       = trim($_POST['surname'] ?? '');
-    $givenName     = trim($_POST['given_name'] ?? '');
-    $middleInitial = trim($_POST['middle_initial'] ?? '');
+    $surname       = strtoupper(trim($_POST['surname'] ?? ''));
+    $givenName     = strtoupper(trim($_POST['given_name'] ?? ''));
+    $middleName    = strtoupper(trim($_POST['middle_initial'] ?? ''));
     $rank          = trim($_POST['rank'] ?? '');
-    $vessel        = trim($_POST['vessel'] ?? '');
+    $vessel        = strtoupper(trim($_POST['vessel'] ?? ''));
     $crewType      = $_POST['crew_type'] ?? 'NEW CREW';
 
-    if (!$surname)    $errors[] = 'Surname is required.';
-    if (!$givenName)  $errors[] = 'Given name is required.';
-    if (!$rank)       $errors[] = 'Rank is required.';
-    if (!$vessel)     $errors[] = 'Vessel is required.';
+    if (!$surname)   $errors[] = 'Surname is required.';
+    if (!$givenName) $errors[] = 'Given name is required.';
+    if (!$rank)      $errors[] = 'Rank is required.';
+    if (!$vessel)    $errors[] = 'Vessel is required.';
 
     if (empty($errors)) {
         $stmt = $db->prepare(
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
-            $session['id'], $surname, $givenName, $middleInitial,
+            $session['id'], $surname, $givenName, $middleName,
             $rank, $vessel, $crewType,
             $_SERVER['REMOTE_ADDR'] ?? null
         ]);
@@ -113,7 +113,6 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
     border-color: #1a4a8a;
     box-shadow: 0 0 0 3px rgba(26,74,138,.1);
   }
-  .form-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
   .radio-group { display: flex; gap: 20px; margin-top: 6px; }
   .radio-item {
     display: flex; align-items: center; gap: 8px;
@@ -182,23 +181,22 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
         <div class="form-section">
           <h3>📋 Personal Information</h3>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="required">Surname</label>
-              <input type="text" name="surname" value="<?= sanitize($_POST['surname'] ?? '') ?>"
-                     placeholder="e.g. DELA CRUZ" required>
-            </div>
-            <div class="form-group">
-              <label>Middle Initial</label>
-              <input type="text" name="middle_initial" value="<?= sanitize($_POST['middle_initial'] ?? '') ?>"
-                     placeholder="e.g. M" maxlength="5">
-            </div>
+          <div class="form-group">
+            <label class="required">Surname</label>
+            <input type="text" name="surname" value="<?= sanitize($_POST['surname'] ?? '') ?>"
+                   placeholder="e.g. DELA CRUZ" required>
           </div>
 
           <div class="form-group">
             <label class="required">Given Name</label>
             <input type="text" name="given_name" value="<?= sanitize($_POST['given_name'] ?? '') ?>"
                    placeholder="e.g. JUAN" required>
+          </div>
+
+          <div class="form-group">
+            <label>Middle Name</label>
+            <input type="text" name="middle_initial" value="<?= sanitize($_POST['middle_initial'] ?? '') ?>"
+                   placeholder="e.g. JIMENEZ">
           </div>
         </div>
 
