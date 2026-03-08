@@ -167,7 +167,7 @@ body{font-family:Georgia,serif;background:#fff;color:#111;}
 }
 
 // ============================================================
-// PDOS — matches original template exactly
+// PDOS
 // ============================================================
 function buildPDOS($fn, $mi, $sn, $rank, $principal, $fullDate, $cert, $d) {
     $logo   = b64img($d . 'pdos_image1.png');
@@ -191,9 +191,6 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .attend-text{font-size:11pt;font-weight:bold;color:#c0392b;text-transform:uppercase;letter-spacing:1px;text-decoration:underline;text-align:center;margin-bottom:2mm;}
 .div-thick{border-top:3px solid #003087;margin:2mm 0 1mm;}
 .div-thin{border-top:1px solid #003087;margin:0 0 2mm;}
-/* fields area */
-.body-area{position:relative;}
-.body-content{position:relative;}
 .info-table{width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:2mm;}
 .info-table td{padding:1.8mm 1mm;vertical-align:bottom;}
 .lbl{font-weight:bold;color:#000;width:52mm;white-space:nowrap;}
@@ -208,38 +205,32 @@ body{font-family:Arial,sans-serif;background:#fff;color:#000;}
 .sig-name{font-size:10pt;font-weight:bold;text-decoration:underline;color:#000;}
 .sig-role{font-size:9pt;color:#333;font-style:italic;}
 </style></head><body><div class="page">
-
 <div class="logo-wrap"><img src="' . $logo . '"></div>
 <div class="dept-text">DEPARTMENT OF LABOR AND EMPLOYMENT</div>
 <div class="seminar-text">PRE-DEPARTURE ORIENTATION SEMINAR</div>
 <div class="attend-text">CERTIFICATE OF ATTENDANCE</div>
 <div class="div-thick"></div>
 <div class="div-thin"></div>
-
-<div class="body-area">
-  <div class="body-content">
-    <table class="info-table">
-      <tr><td class="lbl">Name of OFW</td><td class="col">:</td><td class="val">' . $nameVal . '</td></tr>
-      <tr><td class="lbl">Skill / Occupation</td><td class="col">:</td><td class="val">' . $rankVal . '</td></tr>
-      <tr><td class="lbl">Country of Destination</td><td class="col">:</td><td class="val">WORLD WIDE</td></tr>
-      <tr><td class="lbl">Local Recruitment Agency</td><td class="col">:</td><td class="val">88 ACES MARITIME SERVICES INC.</td></tr>
-      <tr><td class="lbl">Foreign Principal</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
-      <tr><td class="lbl">Foreign Employer</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
-    </table>
-    <div class="certify">This certifies that the above named OFW has completed the prescribed requirements for the above program, held on <u>' . $dateVal . '</u> with Certificate No. <u>PDOS-' . $certNo . '</u>.</div>
-    <table class="sigs-table"><tr>
-      <td><div class="sig-spacer"></div><div class="sig-name-line"><div class="sig-name">MR. JAY B. ALFARO</div><div class="sig-role">Accredited Trainor</div></div></td>
-      <td><img class="sig-img" src="' . $sig2 . '"><div class="sig-name-line"><div class="sig-name">CAPT. CRISANDO S. BLAS</div><div class="sig-role">President</div></div></td>
-    </tr></table>
-  </div>
-</div>
+<table class="info-table">
+  <tr><td class="lbl">Name of OFW</td><td class="col">:</td><td class="val">' . $nameVal . '</td></tr>
+  <tr><td class="lbl">Skill / Occupation</td><td class="col">:</td><td class="val">' . $rankVal . '</td></tr>
+  <tr><td class="lbl">Country of Destination</td><td class="col">:</td><td class="val">WORLD WIDE</td></tr>
+  <tr><td class="lbl">Local Recruitment Agency</td><td class="col">:</td><td class="val">88 ACES MARITIME SERVICES INC.</td></tr>
+  <tr><td class="lbl">Foreign Principal</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
+  <tr><td class="lbl">Foreign Employer</td><td class="col">:</td><td class="val">' . $principalVal . '</td></tr>
+</table>
+<div class="certify">This certifies that the above named OFW has completed the prescribed requirements for the above program, held on <u>' . $dateVal . '</u> with Certificate No. <u>PDOS-' . $certNo . '</u>.</div>
+<table class="sigs-table"><tr>
+  <td><div class="sig-spacer"></div><div class="sig-name-line"><div class="sig-name">MR. JAY B. ALFARO</div><div class="sig-role">Accredited Trainor</div></div></td>
+  <td><img class="sig-img" src="' . $sig2 . '"><div class="sig-name-line"><div class="sig-name">CAPT. CRISANDO S. BLAS</div><div class="sig-role">President</div></div></td>
+</tr></table>
 </div></body></html>';
 
     return $html;
 }
 
 // ============================================================
-// SECAT
+// SECAT — fixed layout matching original template
 // ============================================================
 function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d) {
     $border   = b64img($d . 'secat_image1.png');
@@ -254,57 +245,71 @@ function buildSECAT($fullName, $fullDate, $facilitator, $cert, $d) {
     $facVal  = esc($facilitator);
     $dateVal = esc($fullDate);
 
+    // Use mPDF background image via CSS background-image on body
+    $borderStyle = $border ? 'background-image:url("' . $border . '");background-size:100% 100%;background-repeat:no-repeat;' : '';
+
     $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:Georgia,serif;background:#fff;}
-.page{width:210mm;min-height:297mm;padding:16mm 20mm;position:relative;}
-.bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
-.content{position:relative;z-index:1;}
-.certno-row{text-align:right;font-size:9pt;color:#333;margin-bottom:2mm;}
-.logo-row{text-align:center;margin-bottom:5mm;}
-.logo-row img{height:18mm;}
-.title{text-align:center;margin-bottom:5mm;}
-.title h1{font-size:22pt;font-weight:normal;color:#111;}
-.granted{text-align:center;font-size:11pt;color:#333;margin-bottom:3mm;}
+body{font-family:Georgia,serif;background:#fff;' . $borderStyle . '}
+.page{width:210mm;min-height:297mm;padding:22mm 22mm 16mm;}
+.certno-row{text-align:right;font-size:9pt;color:#333;margin-bottom:6mm;}
+.logo-row{text-align:center;margin-bottom:6mm;}
+.logo-row img{height:20mm;}
+.title{text-align:center;font-size:20pt;font-weight:normal;color:#111;margin-bottom:5mm;}
+.granted{text-align:center;font-size:11pt;color:#333;margin-bottom:4mm;}
 .name-wrap{text-align:center;margin:0 8mm 5mm;}
-.name-text{display:inline-block;font-size:22pt;font-weight:bold;color:#111;border-bottom:2px solid #111;padding:0 6mm 2mm;}
-.body-p{text-align:center;font-size:11pt;color:#333;line-height:1.8;margin-bottom:2mm;}
-.training-type{text-align:center;font-size:13pt;font-weight:bold;color:#111;margin:2mm 0;}
-.secat-logo{text-align:center;margin:3mm 0;}
-.secat-logo img{height:18mm;}
+.name-text{display:inline-block;font-size:20pt;font-weight:bold;color:#111;border-bottom:2px solid #111;padding:0 6mm 2mm;letter-spacing:0.5px;}
+.body-p{text-align:center;font-size:10.5pt;color:#333;line-height:1.8;margin-bottom:3mm;}
+.training-type{text-align:center;font-size:13pt;font-weight:bold;color:#111;text-transform:uppercase;margin:2mm 0 4mm;}
+.secat-logo{text-align:center;margin:4mm 0 6mm;}
+.secat-logo img{height:20mm;}
 .sigs-table{width:100%;border-collapse:collapse;margin-top:8mm;}
-.sigs-table td{width:50%;text-align:center;vertical-align:bottom;padding:0 8mm;}
-.sig-space{height:14mm;}
-.sig-line{border-top:1.5px solid #111;padding-top:2mm;}
-.sig-label{font-size:9.5pt;color:#555;}
-.sig-val{font-size:10pt;font-weight:bold;margin-top:1mm;}
-.logos-bot{text-align:center;margin-top:5mm;}
-.logos-bot img{height:12mm;margin:0 5mm;}
-.footer{text-align:center;font-size:7.5pt;color:#888;margin-top:4mm;}
+.sigs-table td{width:50%;text-align:center;vertical-align:bottom;padding:0 10mm;}
+.sig-space{height:16mm;}
+.sig-line{border-top:1.5px solid #111;padding-top:3mm;}
+.sig-label{font-size:9pt;color:#555;margin-bottom:1mm;}
+.sig-val{font-size:10pt;font-weight:bold;}
+.logos-bot{text-align:center;margin-top:8mm;}
+.logos-bot img{height:11mm;margin:0 4mm;vertical-align:middle;}
+.footer{text-align:center;font-size:7.5pt;color:#666;margin-top:5mm;line-height:1.6;}
 .footer strong{color:#1a237e;}
-</style></head><body><div class="page">
-<img class="bg" src="' . $border . '">
-<div class="content">
-  <div class="certno-row">Certificate No.: ' . $certNo . '</div>
+</style></head><body>
+<div class="page">
+  <div class="certno-row">Certificate No.: <strong>' . $certNo . '</strong></div>
   <div class="logo-row"><img src="' . $logo88 . '"></div>
-  <div class="title"><h1>Certificate of Training Completion</h1></div>
+  <div class="title">Certificate of Training Completion</div>
   <div class="granted">is hereby granted to</div>
   <div class="name-wrap"><span class="name-text">' . $nameVal . '</span></div>
   <div class="body-p">to certify his/her successful completion of the</div>
-  <div class="training-type">SHIP EMERGENCY CARE ATTENDANT TRAINING</div>
+  <div class="training-type">Ship Emergency Care Attendant Training</div>
   <div class="secat-logo"><img src="' . $secat . '"></div>
   <table class="sigs-table"><tr>
-    <td><div class="sig-space"></div><div class="sig-line"><div class="sig-label">Facilitator</div><div class="sig-val">' . $facVal . '</div></div></td>
-    <td><div class="sig-space"></div><div class="sig-line"><div class="sig-label">Training Date</div><div class="sig-val">' . $dateVal . '</div></div></td>
+    <td>
+      <div class="sig-space"></div>
+      <div class="sig-line">
+        <div class="sig-label">Facilitator</div>
+        <div class="sig-val">' . $facVal . '</div>
+      </div>
+    </td>
+    <td>
+      <div class="sig-space"></div>
+      <div class="sig-line">
+        <div class="sig-label">Training Date</div>
+        <div class="sig-val">' . $dateVal . '</div>
+      </div>
+    </td>
   </tr></table>
   <div class="logos-bot">
     <img src="' . $optimumS . '">
     <img src="' . $optra . '">
     <img src="' . $optimumM . '">
   </div>
-  <div class="footer"><strong>QD-TRA-04 Rev 0 30 November 2022</strong><br>*for certificate verification please send an email to: manila.training@shipmanning.net*</div>
+  <div class="footer">
+    <strong>QD-TRA-04 Rev 0 30 November 2022</strong><br>
+    *for certificate verification please send an email to: manila.training@shipmanning.net*
+  </div>
 </div>
-</div></body></html>';
+</body></html>';
 
     return $html;
 }
