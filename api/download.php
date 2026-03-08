@@ -108,7 +108,7 @@ function buildAttendanceHTML(array $session, array $attendees): string {
             <td style="text-align:center">' . ($i + 1) . '</td>
             <td>' . htmlspecialchars($a['surname']       ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['given_name']    ?? '', ENT_QUOTES) . '</td>
-            <td style="text-align:center">' . htmlspecialchars($a['middle_initial'] ?? '', ENT_QUOTES) . '</td>
+         <td>' . htmlspecialchars($a['middle_initial'] ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['rank']          ?? '', ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars($a['vessel']        ?? '', ENT_QUOTES) . '</td>
             <td></td>
@@ -155,7 +155,7 @@ function buildAttendanceHTML(array $session, array $attendees): string {
           <th style="width:30px">No.</th>
           <th>Surname</th>
           <th>Given Name</th>
-          <th style="width:30px">M.I.</th>
+          <th>Middle Name</th>
           <th>Rank</th>
           <th>Vessel</th>
           <th style="width:80px">Signature</th>
