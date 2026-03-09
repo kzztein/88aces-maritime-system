@@ -141,7 +141,7 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Training Sessions — 88 Aces</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/admin.css">
+<link rel="stylesheet" href="../assets/css/Admin.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 .type-card{cursor:pointer;border:2px solid #e5e7eb;border-radius:10px;padding:14px 16px;
