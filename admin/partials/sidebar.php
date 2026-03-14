@@ -1,7 +1,6 @@
 <?php
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 $admin = currentAdmin();
-
 function getInitialsSidebar(string $name): string {
     $words = explode(' ', trim($name));
     $initials = '';
@@ -10,7 +9,6 @@ function getInitialsSidebar(string $name): string {
     }
     return $initials;
 }
-
 $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admin['profile_photo'] : null;
 ?>
 <aside class="sidebar">
@@ -21,7 +19,6 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
       <div class="brand-sub">Maritime Training</div>
     </div>
   </div>
-
   <nav class="sidebar-nav">
     <a href="dashboard.php" class="nav-item <?= strtolower($currentPage) === 'dashboard' ? 'active' : '' ?>">
       <span class="nav-icon">🏠</span> Dashboard
@@ -42,6 +39,9 @@ $profilePhoto = !empty($admin['profile_photo']) ? '../uploads/profiles/' . $admi
       <span class="nav-icon">📊</span> System Logs
     </a>
     <div class="nav-divider"></div>
+    <a href="settings.php" class="nav-item <?= strtolower($currentPage) === 'settings' ? 'active' : '' ?>">
+      <span class="nav-icon">⚙️</span> Settings
+    </a>
     <a href="profile.php" class="nav-item <?= strtolower($currentPage) === 'profile' ? 'active' : '' ?>">
       <div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">
         <?php if ($profilePhoto && file_exists($profilePhoto)): ?>
