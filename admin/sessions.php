@@ -16,21 +16,55 @@ $trainingTypes = [
     'attendance_only' => ['label'=>'Attendance Only',                          'icon'=>'📋','color'=>'#6b7280','prefix'=>'ATT',  'title'=>'ATTENDANCE'],
 ];
 
+// Load dropdown data
+$facilitators = $db->query("SELECT * FROM facilitators WHERE is_active=1 ORDER BY name ASC")->fetchAll();
+$locations    = $db->query("SELECT * FROM locations WHERE is_active=1 ORDER BY is_default DESC, name ASC")->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = $_POST['action'] ?? '';
 
     if ($postAction === 'create' || $postAction === 'update') {
-        $courseTitle       = trim($_POST['course_title']  ?? '');
-        $trainingType      = $_POST['training_type']      ?? 'anti_piracy';
-        $dateConducted     = $_POST['date_conducted']     ?? '';
-        $timeStart         = $_POST['time_start']         ?? '';
-        $timeEnd           = $_POST['time_end']           ?? '';
-        $location          = trim($_POST['location']      ?? '');
-        $facilitator       = trim($_POST['facilitator']   ?? '');
-        $company           = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
-        $principal         = trim($_POST['principal']     ?? '');
-        $sessionCode       = strtoupper(trim($_POST['session_code'] ?? ''));
-        $certValidityYears = ($trainingType === 'secat') ? (int)($_POST['cert_validity_years'] ?? 2) : null;
+        $courseTitle   = trim($_POST['course_title']  ?? '');
+        $trainingType  = $_POST['training_type']      ?? 'anti_piracy';
+        $dateConducted = $_POST['date_conducted']     ?? '';
+        $timeStart     = $_POST['time_start']         ?? '';
+        $timeEnd       = $_POST['time_end']           ?? '';
+        $company       = trim($_POST['company']       ?? '88 ACES MARITIME SERVICES INC.');
+        $principal     = trim($_POST['principal']     ?? '');
+
+        // Handle location — dropdown or new
+        $locationSel   = $_POST['location']       ?? '';
+        $locationOther = trim($_POST['location_other'] ?? '');
+        if ($locationSel === '__other__') {
+            $location = $locationOther;
+            // Save new location
+            if ($location) {
+                $chk = $db->prepare("SELECT id FROM locations WHERE name=?");
+                $chk->execute([$location]);
+                if (!$chk->fetch()) {
+                    $db->prepare("INSERT INTO locations (name) VALUES (?)")->execute([$location]);
+                }
+            }
+        } else {
+            $location = $locationSel;
+        }
+
+        // Handle facilitator — dropdown or new
+        $facilitatorSel   = $_POST['facilitator']        ?? '';
+        $facilitatorOther = trim($_POST['facilitator_other'] ?? '');
+        if ($facilitatorSel === '__other__') {
+            $facilitator = $facilitatorOther;
+            // Save new facilitator
+            if ($facilitator) {
+                $chk = $db->prepare("SELECT id FROM facilitators WHERE name=?");
+                $chk->execute([$facilitator]);
+                if (!$chk->fetch()) {
+                    $db->prepare("INSERT INTO facilitators (name) VALUES (?)")->execute([$facilitator]);
+                }
+            }
+        } else {
+            $facilitator = $facilitatorSel;
+        }
 
         if (!$courseTitle || !$dateConducted || !$location || !$facilitator) {
             $error = 'Please fill in all required fields.';
@@ -39,25 +73,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             if ($postAction === 'create') {
                 $token = generateToken(16);
-                $code  = $sessionCode ?: generateSessionCode();
+                $code  = generateSessionCode();
                 $db->prepare(
                     "INSERT INTO training_sessions
                      (session_code,course_title,training_type,date_conducted,time_start,time_end,
-                      location,facilitator,company,principal,qr_token,created_by,cert_validity_years)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                      location,facilitator,company,principal,qr_token,created_by)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
                 )->execute([$code,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
-                             $location,$facilitator,$company,$principal,$token,$admin['id'],$certValidityYears]);
+                             $location,$facilitator,$company,$principal,$token,$admin['id']]);
                 $newId = $db->lastInsertId();
                 auditLog('CREATE_SESSION','session',$newId,"Code: $code");
                 header("Location: sessions.php?action=view&id=$newId&msg=Session+created!");
                 exit;
             } else {
-                $updateCode = $sessionCode ?: $session['session_code'];
                 $db->prepare(
-                    "UPDATE training_sessions SET session_code=?,course_title=?,training_type=?,date_conducted=?,
-                     time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=?,cert_validity_years=? WHERE id=?"
-                )->execute([$updateCode,$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
-                             $location,$facilitator,$company,$principal,$certValidityYears,$id]);
+                    "UPDATE training_sessions SET course_title=?,training_type=?,date_conducted=?,
+                     time_start=?,time_end=?,location=?,facilitator=?,company=?,principal=? WHERE id=?"
+                )->execute([$courseTitle,$trainingType,$dateConducted,$timeStart,$timeEnd,
+                             $location,$facilitator,$company,$principal,$id]);
                 auditLog('UPDATE_SESSION','session',$id);
                 $msg = 'Session updated.';
             }
@@ -141,7 +174,7 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Training Sessions — 88 Aces</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/Admin.css">
+<link rel="stylesheet" href="<?= APP_URL ?>/assets/css/admin.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 .type-card{cursor:pointer;border:2px solid #e5e7eb;border-radius:10px;padding:14px 16px;
@@ -154,6 +187,8 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
 .principal-field{display:none;animation:fadeIn .3s ease;}
 .principal-field.show{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+select{transition:border-color .2s;}
+select:focus{border-color:#1a4a8a!important;box-shadow:0 0 0 3px rgba(26,74,138,.1)!important;outline:none;}
 </style>
 </head>
 <body>
@@ -248,18 +283,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
                    value="<?=sanitize($session['course_title']??'ANTI-PIRACY AWARENESS TRAINING')?>" required>
           </div>
           <div class="form-group">
-            <label>Session Code <?=$action==='create'?'<span style="font-size:11px;color:#9ca3af">(leave blank to auto-generate)</span>':''?></label>
-            <input type="text" name="session_code"
-                   value="<?=sanitize($session['session_code']??'')?>"
-                   placeholder="<?=$action==='create'?'Auto: TRN-'.date('Y').'-XXXX':''?>"
-                   style="font-family:monospace">
-            <?php if($action==='edit'):?>
-            <p style="font-size:11px;color:#6b7280;margin-top:4px">
-              ⚠️ Changing this will update the next auto-generated code to continue from here.
-            </p>
-            <?php endif;?>
-          </div>
-          <div class="form-group">
             <label>Date Conducted *</label>
             <input type="date" name="date_conducted" value="<?=$session['date_conducted']??date('Y-m-d')?>" required>
           </div>
@@ -271,16 +294,52 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
             <label>Time End</label>
             <input type="time" name="time_end" value="<?=$session['time_end']??'17:00'?>">
           </div>
+
+          <!-- LOCATION DROPDOWN -->
           <div class="form-group">
             <label>Location *</label>
-            <input type="text" name="location" value="<?=sanitize($session['location']??'')?>"
-                   placeholder="e.g. 12th Floor Trium Square Building" required>
+            <select name="location" id="locationSelect" onchange="handleLocationChange(this)"
+                    style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;" required>
+              <?php foreach($locations as $loc): 
+                $currentLoc = $session['location'] ?? '';
+                $isSelected = ($currentLoc === $loc['name']) || ($currentLoc === '' && $loc['is_default']);
+              ?>
+                <option value="<?= sanitize($loc['name']) ?>" <?= $isSelected ? 'selected' : '' ?>>
+                  <?= sanitize($loc['name']) ?><?= $loc['is_default'] ? ' (Default)' : '' ?>
+                </option>
+              <?php endforeach; ?>
+              <option value="__other__">+ Add new location...</option>
+            </select>
+            <input type="text" id="locationOther" name="location_other"
+                   placeholder="Type new location name"
+                   style="display:none;margin-top:8px;padding:10px 12px;border:1.5px solid #1a4a8a;border-radius:8px;font-size:14px;font-family:inherit;width:100%;outline:none;">
+            <p id="locationOtherNote" style="display:none;font-size:11px;color:#16a34a;margin-top:4px">
+              ✅ This location will be saved automatically for future sessions.
+            </p>
           </div>
+
+          <!-- FACILITATOR DROPDOWN -->
           <div class="form-group">
             <label>Facilitator *</label>
-            <input type="text" name="facilitator" value="<?=sanitize($session['facilitator']??'')?>"
-                   placeholder="Facilitator name" required>
+            <select name="facilitator" id="facilitatorSelect" onchange="handleFacilitatorChange(this)"
+                    style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;" required>
+              <option value="">— Select Facilitator —</option>
+              <?php foreach($facilitators as $fac): ?>
+                <option value="<?= sanitize($fac['name']) ?>"
+                  <?= ($session['facilitator']??'') === $fac['name'] ? 'selected' : '' ?>>
+                  <?= sanitize($fac['name']) ?>
+                </option>
+              <?php endforeach; ?>
+              <option value="__other__">+ Add new facilitator...</option>
+            </select>
+            <input type="text" id="facilitatorOther" name="facilitator_other"
+                   placeholder="Type new facilitator name"
+                   style="display:none;margin-top:8px;padding:10px 12px;border:1.5px solid #1a4a8a;border-radius:8px;font-size:14px;font-family:inherit;width:100%;outline:none;">
+            <p id="facilitatorOtherNote" style="display:none;font-size:11px;color:#16a34a;margin-top:4px">
+              ✅ This facilitator will be saved automatically for future sessions.
+            </p>
           </div>
+
           <div class="form-group">
             <label>Company</label>
             <input type="text" name="company" value="<?=sanitize($session['company']??'88 ACES MARITIME SERVICES INC.')?>">
@@ -297,22 +356,6 @@ function generateCertsForSession(int $sid, PDO $db, int $adminId, string $type):
             <p style="font-size:11px;color:#6b7280;margin-top:4px">
               This will fill in both "Foreign Principal" and "Foreign Employer" fields on the PDOS certificate.
             </p>
-          </div>
-
-          <div class="form-group full principal-field <?=($session['training_type']??'')==='secat'?'show':''?>" id="secatField">
-            <label style="color:#d97706;font-weight:700">
-              🚑 Certificate Validity *
-              <span style="font-size:11px;font-weight:400;color:#6b7280">(SECAT — how long the certificate is valid)</span>
-            </label>
-            <div style="display:flex;gap:12px;margin-top:6px">
-              <?php foreach([1,2,3] as $yr):
-                $sel = ($session['cert_validity_years'] ?? 2) == $yr; ?>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:2px solid <?=$sel?'#d97706':'#e5e7eb'?>;border-radius:8px;background:<?=$sel?'#fef3c7':'#fff'?>">
-                <input type="radio" name="cert_validity_years" value="<?=$yr?>" <?=$sel?'checked':''?> style="accent-color:#d97706">
-                <span style="font-weight:600"><?=$yr?> Year<?=$yr>1?'s':''?></span>
-              </label>
-              <?php endforeach;?>
-            </div>
           </div>
         </div>
 
@@ -480,16 +523,42 @@ function selectType(type, color, title) {
   });
   const t = document.getElementById('courseTitle');
   if (t) t.value = title || courseTitles[type] || '';
-
   const pf = document.getElementById('principalField');
   const pi = document.getElementById('principalInput');
   if (pf) {
     pf.classList.toggle('show', type === 'pdos');
     if (pi) pi.required = type === 'pdos';
   }
+}
 
-  const sf = document.getElementById('secatField');
-  if (sf) sf.classList.toggle('show', type === 'secat');
+function handleLocationChange(sel) {
+  const other = document.getElementById('locationOther');
+  const note  = document.getElementById('locationOtherNote');
+  if (sel.value === '__other__') {
+    other.style.display = 'block';
+    note.style.display  = 'block';
+    other.required = true;
+    other.focus();
+  } else {
+    other.style.display = 'none';
+    note.style.display  = 'none';
+    other.required = false;
+  }
+}
+
+function handleFacilitatorChange(sel) {
+  const other = document.getElementById('facilitatorOther');
+  const note  = document.getElementById('facilitatorOtherNote');
+  if (sel.value === '__other__') {
+    other.style.display = 'block';
+    note.style.display  = 'block';
+    other.required = true;
+    other.focus();
+  } else {
+    other.style.display = 'none';
+    note.style.display  = 'none';
+    other.required = false;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -499,8 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pi = document.getElementById('principalInput');
     if (pf) pf.classList.toggle('show', checked.value === 'pdos');
     if (pi) pi.required = checked.value === 'pdos';
-    const sf = document.getElementById('secatField');
-    if (sf) sf.classList.toggle('show', checked.value === 'secat');
   }
 });
 
