@@ -20,21 +20,32 @@ if (!$session) {
     </div></body></html>');
 }
 
+// Load vessels for dropdown
+$vessels = $db->query("SELECT * FROM vessels WHERE is_active=1 ORDER BY name ASC")->fetchAll();
+
 $successMsg = '';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $surname       = trim($_POST['surname'] ?? '');
-    $givenName     = trim($_POST['given_name'] ?? '');
-    $middleInitial = trim($_POST['middle_initial'] ?? '');
-    $rank          = trim($_POST['rank'] ?? '');
-    $vessel        = trim($_POST['vessel'] ?? '');
-    $crewType      = $_POST['crew_type'] ?? 'NEW CREW';
+    $surname       = strtoupper(trim($_POST['surname']        ?? ''));
+    $givenName     = strtoupper(trim($_POST['given_name']     ?? ''));
+    $middleName    = strtoupper(trim($_POST['middle_initial'] ?? ''));
+    $rank          = trim($_POST['rank']                      ?? '');
+    $crewType      = $_POST['crew_type']                      ?? 'NEW CREW';
 
-    if (!$surname)    $errors[] = 'Surname is required.';
-    if (!$givenName)  $errors[] = 'Given name is required.';
-    if (!$rank)       $errors[] = 'Rank is required.';
-    if (!$vessel)     $errors[] = 'Vessel is required.';
+    // Handle vessel — dropdown or typed
+    $vesselSelect = $_POST['vessel_select'] ?? '';
+    $vesselOther  = strtoupper(trim($_POST['vessel_other'] ?? ''));
+    if (!empty($vessels)) {
+        $vessel = ($vesselSelect === '__other__' || $vesselSelect === '') ? $vesselOther : strtoupper(trim($vesselSelect));
+    } else {
+        $vessel = strtoupper(trim($_POST['vessel'] ?? ''));
+    }
+
+    if (!$surname)   $errors[] = 'Surname is required.';
+    if (!$givenName) $errors[] = 'Given name is required.';
+    if (!$rank)      $errors[] = 'Rank is required.';
+    if (!$vessel)    $errors[] = 'Vessel is required.';
 
     if (empty($errors)) {
         $stmt = $db->prepare(
@@ -42,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
-            $session['id'], $surname, $givenName, $middleInitial,
+            $session['id'], $surname, $givenName, $middleName,
             $rank, $vessel, $crewType,
             $_SERVER['REMOTE_ADDR'] ?? null
         ]);
@@ -50,9 +61,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Chief Engineer','2nd Engineer','3rd Engineer','4th Engineer',
-    'Bosun','Able Seaman (AB)','Ordinary Seaman (OS)','Deck Cadet','Engine Cadet','Chief Cook (CCK)','Messman (MSM)',
-    'Motorman (MST)','Electrician','Oiler (OLR)','Wiper (WPR)','Fitter (FTR)','Other'];
+$rankOptions = [
+    'Captain/Master','Chief Officer','2nd Officer','3rd Officer',
+    'Chief Engineer','2nd Engineer','3rd Engineer','4th Engineer',
+    'Bosun','Able Seaman (AB)','Ordinary Seaman (OS)',
+    'Deck Cadet','Engine Cadet','Chief Cook (CCK)','Messman (MSM)',
+    'Motorman (MST)','Electrician','Oiler (OLR)','Wiper (WPR)',
+    'Fitter (FTR)','Other'
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,7 +129,9 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
     border-color: #1a4a8a;
     box-shadow: 0 0 0 3px rgba(26,74,138,.1);
   }
-  .form-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+  .vessel-other-wrap { display: none; margin-top: 8px; }
+  .vessel-other-wrap.show { display: block; }
+  .vessel-other-note { font-size: 11px; color: #6b7280; margin-top: 4px; }
   .radio-group { display: flex; gap: 20px; margin-top: 6px; }
   .radio-item {
     display: flex; align-items: center; gap: 8px;
@@ -148,10 +166,81 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
     font-size: 12px; color: #9ca3af;
     border-top: 1px solid #f3f4f6;
   }
+
+  /* ── Privacy Modal ── */
+  .privacy-overlay {
+    display: flex; position: fixed; inset: 0;
+    background: rgba(0,0,0,.65); z-index: 999;
+    align-items: flex-end; justify-content: center;
+  }
+  .privacy-overlay.hidden { display: none; }
+  .privacy-modal {
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 24px 36px;
+    width: 100%; max-width: 600px;
+    max-height: 88vh; overflow-y: auto;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .privacy-handle {
+    width: 40px; height: 4px; background: #e5e7eb;
+    border-radius: 2px; margin: 0 auto 18px;
+  }
+  .privacy-icon  { font-size: 32px; margin-bottom: 8px; }
+  .privacy-modal h3 { font-size: 17px; font-weight: 700; color: #0f2c5c; margin-bottom: 4px; }
+  .privacy-sub { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+  .privacy-body {
+    background: #f9fafb; border-radius: 10px;
+    padding: 16px; margin-bottom: 20px;
+    font-size: 13px; color: #374151; line-height: 1.75;
+    border: 1px solid #e5e7eb;
+  }
+  .privacy-body p { margin-bottom: 10px; }
+  .privacy-body p:last-child { margin-bottom: 0; }
+  .privacy-body strong { color: #0f2c5c; }
+  .btn-accept-privacy {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #1a4a8a, #0f2c5c);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: opacity .2s;
+  }
+  .btn-accept-privacy:hover { opacity: .9; }
 </style>
 </head>
 <body>
-<div class="form-container">
+
+<?php if (!$successMsg): ?>
+<!-- Privacy Notice Modal — shown first before form -->
+<div class="privacy-overlay" id="privacyModal">
+  <div class="privacy-modal">
+    <div class="privacy-handle"></div>
+    <div class="privacy-icon">🔒</div>
+    <h3>Data Privacy Notice</h3>
+    <p class="privacy-sub">Please read carefully before filling out this form</p>
+    <div class="privacy-body">
+      <p><strong>88 Aces Maritime Services Inc.</strong> is collecting your personal information for the following official purposes:</p>
+      <p>
+        ✅ To record your attendance in this training session<br>
+        ✅ To generate your official Certificate of Attendance/Completion<br>
+        ✅ To maintain training records required by POEA and maritime regulatory bodies
+      </p>
+      <p>Your personal data will be kept <strong>strictly confidential</strong> and will only be used for official training and certification purposes. It will not be shared with any third party without your consent, except as required by law or maritime regulatory authorities.</p>
+      <p>This data collection is governed by the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Republic of the Philippines.</p>
+      <p style="font-size:12px;color:#6b7280">By tapping the button below, you acknowledge that you have read and understood this notice, and you consent to the collection and processing of your personal information as described above.</p>
+    </div>
+    <button class="btn-accept-privacy" onclick="acceptPrivacy()">
+      ✅ I Understand & Agree — Proceed to Form
+    </button>
+  </div>
+</div>
+<?php endif; ?>
+
+<div class="form-container" id="mainForm" style="<?= (!$successMsg && empty($errors)) ? 'display:none' : '' ?>">
   <div class="form-header">
     <div class="org">88 Aces Maritime Services Inc.</div>
     <h1><?= sanitize($session['course_title']) ?></h1>
@@ -182,23 +271,25 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
         <div class="form-section">
           <h3>📋 Personal Information</h3>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="required">Surname</label>
-              <input type="text" name="surname" value="<?= sanitize($_POST['surname'] ?? '') ?>"
-                     placeholder="e.g. DELA CRUZ" required>
-            </div>
-            <div class="form-group">
-              <label>Middle Initial</label>
-              <input type="text" name="middle_initial" value="<?= sanitize($_POST['middle_initial'] ?? '') ?>"
-                     placeholder="e.g. M" maxlength="5">
-            </div>
+          <div class="form-group">
+            <label class="required">Surname</label>
+            <input type="text" name="surname"
+                   value="<?= sanitize($_POST['surname'] ?? '') ?>"
+                   placeholder="e.g. DELA CRUZ" required>
           </div>
 
           <div class="form-group">
             <label class="required">Given Name</label>
-            <input type="text" name="given_name" value="<?= sanitize($_POST['given_name'] ?? '') ?>"
+            <input type="text" name="given_name"
+                   value="<?= sanitize($_POST['given_name'] ?? '') ?>"
                    placeholder="e.g. JUAN" required>
+          </div>
+
+          <div class="form-group">
+            <label>Middle Name</label>
+            <input type="text" name="middle_initial"
+                   value="<?= sanitize($_POST['middle_initial'] ?? '') ?>"
+                   placeholder="e.g. JIMENEZ">
           </div>
         </div>
 
@@ -217,19 +308,45 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
 
           <div class="form-group">
             <label class="required">Vessel Name</label>
-            <input type="text" name="vessel" value="<?= sanitize($_POST['vessel'] ?? '') ?>"
-                   placeholder="e.g. MV CARAVOS LIBERTY" required>
+            <?php if (!empty($vessels)): ?>
+              <!-- Vessel dropdown from admin-managed list -->
+              <select name="vessel_select" id="vesselSelect" onchange="handleVesselChange(this)">
+                <option value="">— Select your vessel —</option>
+                <?php foreach ($vessels as $v): ?>
+                  <option value="<?= sanitize($v['name']) ?>"
+                    <?= ($_POST['vessel_select'] ?? '') === $v['name'] ? 'selected' : '' ?>>
+                    <?= sanitize($v['name']) ?>
+                  </option>
+                <?php endforeach; ?>
+                <option value="__other__" <?= ($_POST['vessel_select'] ?? '') === '__other__' ? 'selected' : '' ?>>
+                  My vessel is not in the list...
+                </option>
+              </select>
+              <div class="vessel-other-wrap <?= ($_POST['vessel_select'] ?? '') === '__other__' ? 'show' : '' ?>" id="vesselOtherWrap">
+                <input type="text" name="vessel_other" id="vesselOther"
+                       placeholder="Type your vessel name e.g. MV CARAVOS LIBERTY"
+                       value="<?= sanitize($_POST['vessel_other'] ?? '') ?>">
+                <p class="vessel-other-note">Please type your full vessel name above.</p>
+              </div>
+            <?php else: ?>
+              <!-- No vessels in admin list yet — plain text input -->
+              <input type="text" name="vessel"
+                     value="<?= sanitize($_POST['vessel'] ?? '') ?>"
+                     placeholder="e.g. MV CARAVOS LIBERTY" required>
+            <?php endif; ?>
           </div>
 
           <div class="form-group">
             <label>Crew Type</label>
             <div class="radio-group">
               <label class="radio-item">
-                <input type="radio" name="crew_type" value="NEW CREW" <?= ($_POST['crew_type'] ?? 'NEW CREW') === 'NEW CREW' ? 'checked' : '' ?>>
+                <input type="radio" name="crew_type" value="NEW CREW"
+                       <?= ($_POST['crew_type'] ?? 'NEW CREW') === 'NEW CREW' ? 'checked' : '' ?>>
                 New Crew
               </label>
               <label class="radio-item">
-                <input type="radio" name="crew_type" value="EX CREW"  <?= ($_POST['crew_type'] ?? '') === 'EX CREW'  ? 'checked' : '' ?>>
+                <input type="radio" name="crew_type" value="EX CREW"
+                       <?= ($_POST['crew_type'] ?? '') === 'EX CREW' ? 'checked' : '' ?>>
                 Ex Crew (returning)
               </label>
             </div>
@@ -242,5 +359,33 @@ $rankOptions = ['Captain/Master','Chief Officer','2nd Officer','3rd Officer','Ch
   </div>
   <div class="form-footer">QD-TRA-02 Rev.1 · 88 Aces Maritime Services Inc. · Pasay City, Philippines</div>
 </div>
+
+<script>
+function acceptPrivacy() {
+  document.getElementById('privacyModal').classList.add('hidden');
+  document.getElementById('mainForm').style.display = 'block';
+}
+
+function handleVesselChange(sel) {
+  const wrap  = document.getElementById('vesselOtherWrap');
+  const input = document.getElementById('vesselOther');
+  if (sel.value === '__other__') {
+    wrap.classList.add('show');
+    input.required = true;
+    input.focus();
+  } else {
+    wrap.classList.remove('show');
+    input.required = false;
+    input.value = '';
+  }
+}
+
+// If there were form errors, skip privacy modal and show form directly
+<?php if (!empty($errors)): ?>
+const modal = document.getElementById('privacyModal');
+if (modal) modal.classList.add('hidden');
+document.getElementById('mainForm').style.display = 'block';
+<?php endif; ?>
+</script>
 </body>
 </html>
