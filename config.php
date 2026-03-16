@@ -49,7 +49,7 @@ function isLoggedIn(): bool {
 }
 function requireLogin(): void {
     if (!isLoggedIn()) {
-        header('Location: ' . APP_URL . '/admin/Login.php');
+        header('Location: ' . APP_URL . '/admin/login.php');
         exit;
     }
 }
