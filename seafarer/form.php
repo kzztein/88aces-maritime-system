@@ -42,18 +42,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vessel = strtoupper(trim($_POST['vessel'] ?? ''));
     }
 
+    // Birthday
+    $bdayMonth = $_POST['bday_month'] ?? '';
+    $bdayDay   = $_POST['bday_day']   ?? '';
+    $bdayYear  = $_POST['bday_year']  ?? '';
+    $birthday  = null;
+    if ($bdayMonth && $bdayDay && $bdayYear) {
+        if (checkdate((int)$bdayMonth, (int)$bdayDay, (int)$bdayYear)) {
+            $birthday = $bdayYear . '-' . $bdayMonth . '-' . $bdayDay;
+        } else {
+            $errors[] = 'Please enter a valid birthday.';
+        }
+    }
+
     if (!$surname)   $errors[] = 'Surname is required.';
     if (!$givenName) $errors[] = 'Given name is required.';
     if (!$rank)      $errors[] = 'Rank is required.';
     if (!$vessel)    $errors[] = 'Vessel is required.';
+    if (!$birthday && empty(array_filter($errors, fn($e) => str_contains($e, 'valid birthday'))))
+                     $errors[] = 'Birthday is required.';
 
     if (empty($errors)) {
         $stmt = $db->prepare(
-            "INSERT INTO attendees (session_id, surname, given_name, middle_initial, rank, vessel, crew_type, ip_address)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO attendees (session_id, surname, given_name, middle_initial, birthday, rank, vessel, crew_type, ip_address)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
-            $session['id'], $surname, $givenName, $middleName,
+            $session['id'], $surname, $givenName, $middleName, $birthday,
             $rank, $vessel, $crewType,
             $_SERVER['REMOTE_ADDR'] ?? null
         ]);
@@ -69,6 +84,9 @@ $rankOptions = [
     'Motorman (MST)','Electrician','Oiler (OLR)','Wiper (WPR)',
     'Fitter (FTR)','Other'
 ];
+
+$monthNames = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,6 +147,28 @@ $rankOptions = [
     border-color: #1a4a8a;
     box-shadow: 0 0 0 3px rgba(26,74,138,.1);
   }
+  .birthday-row {
+    display: flex;
+    gap: 10px;
+  }
+  .birthday-row select {
+    padding: 12px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+    background: #fff;
+    width: 100%;
+  }
+  .birthday-row select:focus {
+    border-color: #1a4a8a;
+    box-shadow: 0 0 0 3px rgba(26,74,138,.1);
+  }
+  .birthday-row .bday-month { flex: 2; }
+  .birthday-row .bday-day   { flex: 1; }
+  .birthday-row .bday-year  { flex: 1.5; }
   .vessel-other-wrap { display: none; margin-top: 8px; }
   .vessel-other-wrap.show { display: block; }
   .vessel-other-note { font-size: 11px; color: #6b7280; margin-top: 4px; }
@@ -291,6 +331,39 @@ $rankOptions = [
                    value="<?= sanitize($_POST['middle_initial'] ?? '') ?>"
                    placeholder="e.g. JIMENEZ">
           </div>
+
+          <div class="form-group">
+            <label class="required">Birthday</label>
+            <div class="birthday-row">
+              <select name="bday_month" class="bday-month" required>
+                <option value="">Month</option>
+                <?php foreach ($monthNames as $i => $m):
+                  $val = str_pad($i + 1, 2, '0', STR_PAD_LEFT);
+                  $sel = ($_POST['bday_month'] ?? '') === $val ? 'selected' : '';
+                ?>
+                  <option value="<?= $val ?>" <?= $sel ?>><?= $m ?></option>
+                <?php endforeach; ?>
+              </select>
+              <select name="bday_day" class="bday-day" required>
+                <option value="">Day</option>
+                <?php for ($d = 1; $d <= 31; $d++):
+                  $val = str_pad($d, 2, '0', STR_PAD_LEFT);
+                  $sel = ($_POST['bday_day'] ?? '') === $val ? 'selected' : '';
+                ?>
+                  <option value="<?= $val ?>" <?= $sel ?>><?= $d ?></option>
+                <?php endfor; ?>
+              </select>
+              <select name="bday_year" class="bday-year" required>
+                <option value="">Year</option>
+                <?php for ($y = date('Y') - 18; $y >= 1950; $y--):
+                  $sel = ($_POST['bday_year'] ?? '') === (string)$y ? 'selected' : '';
+                ?>
+                  <option value="<?= $y ?>" <?= $sel ?>><?= $y ?></option>
+                <?php endfor; ?>
+              </select>
+            </div>
+          </div>
+
         </div>
 
         <div class="form-section">
@@ -309,7 +382,6 @@ $rankOptions = [
           <div class="form-group">
             <label class="required">Vessel Name</label>
             <?php if (!empty($vessels)): ?>
-              <!-- Vessel dropdown from admin-managed list -->
               <select name="vessel_select" id="vesselSelect" onchange="handleVesselChange(this)">
                 <option value="">— Select your vessel —</option>
                 <?php foreach ($vessels as $v): ?>
@@ -329,7 +401,6 @@ $rankOptions = [
                 <p class="vessel-other-note">Please type your full vessel name above.</p>
               </div>
             <?php else: ?>
-              <!-- No vessels in admin list yet — plain text input -->
               <input type="text" name="vessel"
                      value="<?= sanitize($_POST['vessel'] ?? '') ?>"
                      placeholder="e.g. MV CARAVOS LIBERTY" required>
