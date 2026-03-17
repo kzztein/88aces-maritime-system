@@ -91,6 +91,8 @@ $typeLabels = [
 .pagination a { background:#fff; border:1px solid #e5e7eb; color:#374151; }
 .pagination a:hover { background:#f3f4f6; }
 .pagination .active { background:#1a4a8a; color:#fff; border:1px solid #1a4a8a; }
+.birthday-cell { font-size:12px; color:#374151; white-space:nowrap; }
+.birthday-na   { font-size:12px; color:#9ca3af; font-style:italic; }
 </style>
 </head>
 <body>
@@ -158,6 +160,7 @@ $typeLabels = [
               <th>Surname</th>
               <th>Given Name</th>
               <th>M.I.</th>
+              <th>Birthday</th>
               <th>Rank</th>
               <th>Vessel</th>
               <th>Crew Type</th>
@@ -170,7 +173,7 @@ $typeLabels = [
           </thead>
           <tbody>
           <?php if (empty($attendees)): ?>
-            <tr><td colspan="12" style="text-align:center;padding:40px;color:#9ca3af">
+            <tr><td colspan="13" style="text-align:center;padding:40px;color:#9ca3af">
               <?= $search || $typeFilter || $crewFilter ? 'No attendees found matching your search.' : 'No attendees yet.' ?>
             </td></tr>
           <?php else: ?>
@@ -182,6 +185,13 @@ $typeLabels = [
               <td style="font-weight:600"><?= sanitize(strtoupper($a['surname'])) ?></td>
               <td><?= sanitize(strtoupper($a['given_name'])) ?></td>
               <td><?= sanitize(strtoupper($a['middle_initial'])) ?></td>
+              <td>
+                <?php if (!empty($a['birthday']) && $a['birthday'] !== '0000-00-00'): ?>
+                  <span class="birthday-cell">🎂 <?= date('M d, Y', strtotime($a['birthday'])) ?></span>
+                <?php else: ?>
+                  <span class="birthday-na">—</span>
+                <?php endif; ?>
+              </td>
               <td><?= sanitize($a['rank']) ?></td>
               <td><?= sanitize($a['vessel']) ?></td>
               <td>
