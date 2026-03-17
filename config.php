@@ -2,30 +2,25 @@
 // ============================================================
 // config.php — Database & App Configuration (PRODUCTION)
 // ============================================================
-define('DB_HOST', 'localhost');
+define('DB_HOST', 'localhost'); // Fixed: Hostinger requires 'localhost' not '127.0.0.1'
 define('DB_USER', 'u604181547_maritimeadmin');
-define('DB_PASS', 'Maritime88Aces!');
+define('DB_PASS', 'Aces@Maritime#2026!');
 define('DB_NAME', 'u604181547_maritimedb');
-
 define('APP_NAME', '88 Aces Maritime Training System');
-define('APP_URL',  'http://goldenrod-finch-410796.hostingersite.com');
-define('CERT_PREFIX', 'APAT');
-
+define('APP_URL',  'https://goldenrod-finch-410796.hostingersite.com');
+define('CERT_PREFIX', 'APAT');     // Certificate number prefix
 // Paths (relative to project root)
 define('ROOT_PATH',  __DIR__ . '/');
 define('CERT_PATH',  ROOT_PATH . 'certificates/');
 define('QR_PATH',    ROOT_PATH . 'qrcodes/');
 define('UPLOAD_PATH',ROOT_PATH . 'uploads/');
-
 // Session settings
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_strict_mode', 1);
 session_start();
-
 // Error reporting (disabled for production)
 error_reporting(0);
 ini_set('display_errors', 0);
-
 // ============================================================
 // Database Connection (PDO)
 // ============================================================
@@ -41,12 +36,11 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            die('Database connection failed.');
+            die(json_encode(['success' => false, 'message' => 'Database connection failed: ' . $e->getMessage()]));
         }
     }
     return $pdo;
 }
-
 // ============================================================
 // Auth Helpers
 // ============================================================
@@ -62,7 +56,6 @@ function requireLogin(): void {
 function currentAdmin(): array {
     return $_SESSION['admin_data'] ?? [];
 }
-
 // ============================================================
 // Utility Functions
 // ============================================================
