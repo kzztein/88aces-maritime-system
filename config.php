@@ -4,7 +4,7 @@
 // ============================================================
 define('DB_HOST', 'localhost'); // Fixed: Hostinger requires 'localhost' not '127.0.0.1'
 define('DB_USER', 'u604181547_maritimeadmin');
-define('DB_PASS', 'Aces@Maritime#2026!');
+define('DB_PASS', 'Maritime88Aces!');
 define('DB_NAME', 'u604181547_maritimedb');
 define('APP_NAME', '88 Aces Maritime Training System');
 define('APP_URL',  'https://goldenrod-finch-410796.hostingersite.com');
@@ -36,7 +36,7 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            die(json_encode(['success' => false, 'message' => 'Database connection failed: ' . $e->getMessage()]));
+            
         }
     }
     return $pdo;
